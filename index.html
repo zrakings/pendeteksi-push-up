@@ -87,8 +87,21 @@
                     <span id="ai-status-text">Memuat Model AI...</span>
                 </div>
 
+                <!-- Voice Coach Toggle -->
+                <button id="btn-voice" title="Pelatih Suara AI (Voice Coach)" class="px-2.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/40 transition active:scale-95 flex items-center gap-1.5 text-xs font-bold">
+                    <i data-lucide="mic" id="icon-voice-on" class="w-4 h-4"></i>
+                    <i data-lucide="mic-off" id="icon-voice-off" class="w-4 h-4 hidden text-slate-400"></i>
+                    <span class="hidden md:inline" id="voice-btn-label">Voice AI</span>
+                </button>
+
+                <!-- Auto-Pause Toggle -->
+                <button id="btn-autopause" title="Auto-Pause Cerdas saat berdiri/keluar frame" class="px-2.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/40 transition active:scale-95 flex items-center gap-1.5 text-xs font-bold">
+                    <i data-lucide="user-check" id="icon-autopause" class="w-4 h-4"></i>
+                    <span class="hidden md:inline" id="autopause-btn-label">Auto-Pause</span>
+                </button>
+
                 <!-- Sound Toggle -->
-                <button id="btn-sound" title="Suara Efek" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
+                <button id="btn-sound" title="Suara Efek Beep" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
                     <i data-lucide="volume-2" id="icon-sound-on" class="w-5 h-5 text-emerald-400"></i>
                     <i data-lucide="volume-x" id="icon-sound-off" class="w-5 h-5 text-slate-400 hidden"></i>
                 </button>
@@ -140,9 +153,9 @@
                     </div>
 
                     <!-- Top Overlay HUD inside Canvas -->
-                    <div id="canvas-hud-top" class="hidden absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-20">
+                    <div id="canvas-hud-top" class="hidden absolute top-3 left-3 right-3 flex items-center justify-between gap-2 pointer-events-none z-20">
                         <!-- Live Indicator -->
-                        <div id="live-status-pill" class="flex items-center gap-2 bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/70 transition-colors">
+                        <div id="live-status-pill" class="flex items-center gap-2 bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/70 transition-colors shrink-0">
                             <span id="live-dot-container" class="relative flex h-2.5 w-2.5">
                                 <span id="live-dot-ping" class="pulse-dot absolute inline-flex h-full w-full rounded-full bg-rose-500"></span>
                                 <span id="live-dot-core" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
@@ -150,8 +163,14 @@
                             <span id="live-status-text" class="text-xs font-semibold tracking-wider text-slate-200 uppercase">AI Aktif</span>
                         </div>
 
+                        <!-- Hand Stance / Grip Pill (Visible in Front View) -->
+                        <div id="hand-grip-hud" class="hidden items-center gap-1.5 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-violet-500/40 text-xs font-semibold text-violet-300">
+                            <i data-lucide="hand" class="w-3.5 h-3.5 text-violet-400"></i>
+                            <span id="hand-grip-hud-text">Normal (Seimbang)</span>
+                        </div>
+
                         <!-- Detected Angle/Side Badge -->
-                        <div id="side-badge" class="bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/70 text-xs font-medium text-slate-300">
+                        <div id="side-badge" class="bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/70 text-xs font-medium text-slate-300 shrink-0">
                             Sudut: <span id="detected-side" class="text-emerald-400 font-bold">-</span>
                         </div>
                     </div>
@@ -162,8 +181,8 @@
                             <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-0.5">
                                 <i data-lucide="pause-circle" class="w-7 h-7"></i>
                             </div>
-                            <span class="text-base sm:text-lg font-black tracking-wider text-amber-400 uppercase">LATIHAN DIJEDA</span>
-                            <p class="text-xs text-slate-300 leading-relaxed">
+                            <span id="pause-overlay-title" class="text-base sm:text-lg font-black tracking-wider text-amber-400 uppercase">LATIHAN DIJEDA</span>
+                            <p id="pause-overlay-desc" class="text-xs text-slate-300 leading-relaxed">
                                 Hitungan repetisi &amp; waktu berhenti sementara. Tekan <span class="font-bold text-white">Lanjutkan</span> atau <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-amber-300">Spasi</kbd>.
                             </p>
                         </div>
@@ -209,23 +228,28 @@
                 </div>
 
                 <!-- Control Bar -->
-                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 sm:gap-2.5">
                     <button id="btn-toggle-cam" disabled class="col-span-2 sm:col-span-2 py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-emerald-500/10">
                         <i data-lucide="video" id="cam-btn-icon" class="w-5 h-5"></i>
                         <span id="cam-btn-text">Mulai Kamera</span>
                     </button>
 
-                    <button id="btn-pause" disabled class="col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 disabled:bg-slate-800/60 disabled:border-slate-800 disabled:text-slate-600 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                    <button id="btn-pause" disabled class="col-span-1 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 disabled:bg-slate-800/60 disabled:border-slate-800 disabled:text-slate-600 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-1.5 transition active:scale-95">
                         <i data-lucide="pause" id="pause-btn-icon" class="w-4 h-4"></i>
                         <span id="pause-btn-text">Jeda</span>
                     </button>
 
-                    <button id="btn-switch-cam" class="py-3.5 px-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                    <button id="btn-finish" class="col-span-1 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/40 font-bold text-sm flex items-center justify-center gap-1.5 transition active:scale-95">
+                        <i data-lucide="award" class="w-4 h-4 text-violet-400"></i>
+                        <span>Selesai</span>
+                    </button>
+
+                    <button id="btn-switch-cam" class="py-3.5 px-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center justify-center gap-1.5 transition active:scale-95">
                         <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-400"></i>
                         <span>Kamera</span>
                     </button>
 
-                    <button id="btn-reset" class="py-3.5 px-3 rounded-2xl bg-slate-800 hover:bg-rose-950/60 hover:border-rose-800 hover:text-rose-300 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                    <button id="btn-reset" class="py-3.5 px-3 rounded-2xl bg-slate-800 hover:bg-rose-950/60 hover:border-rose-800 hover:text-rose-300 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center justify-center gap-1.5 transition active:scale-95">
                         <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
                         <span>Reset</span>
                     </button>
@@ -237,11 +261,11 @@
                         <i data-lucide="lightbulb" class="w-5 h-5"></i>
                     </div>
                     <div class="text-xs text-slate-300 space-y-1 leading-relaxed">
-                        <p class="font-semibold text-white">Panduan Sensor Samping &amp; Depan:</p>
+                        <p class="font-semibold text-white">Fitur Pintar Aktif di Sesi Ini:</p>
                         <ul class="list-disc list-inside text-slate-400 space-y-0.5">
-                            <li><strong>Mode Samping:</strong> Mengukur sudut siku (<strong>&lt; 90°</strong> turun, <strong>&gt; 150°</strong> naik) dan kelurusan badan (bahu–pinggul–kaki).</li>
-                            <li><strong>Mode Depan:</strong> Letakkan ponsel/laptop di depan wajah Anda. Sensor melacak <strong>sudut kedua siku (kiri &amp; kanan)</strong> serta penurunan jarak bahu terhadap pergelangan tangan.</li>
-                            <li><strong>Mode Otomatis:</strong> Mendeteksi otomatis apakah tubuh Anda menghadap ke depan atau menyamping terhadap kamera.</li>
+                            <li><strong>AI Voice Coach &amp; Tempo:</strong> Membacakan hitungan otomatis &amp; memantau kecepatan turun/naik agar otot bekerja maksimal.</li>
+                            <li><strong>Auto-Pause Cerdas:</strong> Otomatis menjeda saat Anda berdiri/istirahat di luar posisi push-up dan lanjut otomatis saat siap kembali.</li>
+                            <li><strong>Mode Tantangan 60 Detik &amp; Kartu Hasil:</strong> Uji rekor push-up 1 menit atau tekan <strong>Selesai</strong> untuk melihat rapor postur lengkap.</li>
                         </ul>
                     </div>
                 </div>
@@ -250,28 +274,47 @@
             <!-- Right Column: Fitness Stats Dashboard (5 cols on desktop) -->
             <div class="lg:col-span-5 flex flex-col gap-4">
                 
+                <!-- Workout Mode Switcher (Normal Target vs 60s Challenge) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-1.5 grid grid-cols-2 gap-1.5">
+                    <button type="button" id="mode-normal-btn" class="py-2 px-3 rounded-xl text-xs font-bold transition bg-emerald-500 text-slate-950 shadow flex items-center justify-center gap-1.5">
+                        <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                        <span>Latihan Target</span>
+                    </button>
+                    <button type="button" id="mode-challenge-btn" class="py-2 px-3 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
+                        <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span>Tantangan 60 Detik</span>
+                    </button>
+                </div>
+
                 <!-- Main Rep Counter & Stage Card -->
                 <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800/90 border border-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
                     <!-- Subtle decorative glow -->
                     <div class="absolute -top-16 -right-16 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Total Push-Up</span>
+                        <span id="counter-header-label" class="text-xs font-bold uppercase tracking-widest text-slate-400">Total Push-Up</span>
                         <!-- Stage Badge -->
                         <span id="stage-badge" class="px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 transition-colors">
                             SIAP
                         </span>
                     </div>
 
-                    <div class="flex items-baseline gap-3 my-2">
-                        <span id="rep-count" class="text-7xl sm:text-8xl font-black tracking-tighter text-white tabular-nums">0</span>
-                        <span class="text-lg font-semibold text-slate-400">/ <span id="target-display">20</span> rep</span>
+                    <div class="flex items-baseline justify-between gap-3 my-2">
+                        <div class="flex items-baseline gap-3">
+                            <span id="rep-count" class="text-7xl sm:text-8xl font-black tracking-tighter text-white tabular-nums">0</span>
+                            <span id="target-suffix" class="text-lg font-semibold text-slate-400">/ <span id="target-display">20</span> rep</span>
+                        </div>
+                        <!-- Personal Best Pill for Challenge Mode -->
+                        <div id="pb-badge" class="hidden flex-col items-end bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-2xl">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Rekor 60d</span>
+                            <span class="text-base font-black text-white tabular-nums"><span id="pb-count">0</span> rep</span>
+                        </div>
                     </div>
 
                     <!-- Target Progress Bar -->
                     <div class="mt-4 space-y-2">
                         <div class="flex justify-between text-xs font-medium">
-                            <span class="text-slate-400">Progres Target Latihan</span>
+                            <span id="progress-label-text" class="text-slate-400">Progres Target Latihan</span>
                             <span id="progress-percent" class="text-emerald-400 font-bold">0%</span>
                         </div>
                         <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
@@ -279,8 +322,8 @@
                         </div>
                     </div>
 
-                    <!-- Target Selector -->
-                    <div class="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-3">
+                    <!-- Target Selector (Normal Mode) -->
+                    <div id="target-selector-row" class="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-3">
                         <label for="target-input" class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                             <i data-lucide="target" class="w-4 h-4 text-emerald-400"></i>
                             <span>Target Repetisi:</span>
@@ -289,6 +332,89 @@
                             <button onclick="adjustTarget(-5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center transition">-5</button>
                             <input type="number" id="target-input" value="20" min="1" max="500" class="w-16 h-8 bg-slate-950 border border-slate-700 rounded-lg text-center text-sm font-bold text-white focus:outline-none focus:border-emerald-500">
                             <button onclick="adjustTarget(5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center transition">+5</button>
+                        </div>
+                    </div>
+
+                    <!-- Challenge Info Row (60s Mode) -->
+                    <div id="challenge-info-row" class="hidden mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                        <span class="text-xs text-amber-300 font-semibold flex items-center gap-1.5">
+                            <i data-lucide="flame" class="w-4 h-4"></i>
+                            <span>Selesaikan sebanyak mungkin dalam 60 detik!</span>
+                        </span>
+                        <button type="button" onclick="restartChallenge()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700">
+                            Ulangi 60d
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tempo & Time Under Tension Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-5 shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-400">
+                                <i data-lucide="activity" class="w-4 h-4"></i>
+                            </div>
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Analisis Tempo (TUT)</span>
+                        </div>
+                        <span id="tempo-status-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                            Menunggu Rep
+                        </span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-2">
+                            <p class="text-[10px] font-semibold text-slate-400 uppercase">Turun</p>
+                            <p id="tempo-down-val" class="text-base font-black font-mono text-sky-400 mt-0.5">-- dtk</p>
+                        </div>
+                        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-2">
+                            <p class="text-[10px] font-semibold text-slate-400 uppercase">Naik</p>
+                            <p id="tempo-up-val" class="text-base font-black font-mono text-emerald-400 mt-0.5">-- dtk</p>
+                        </div>
+                        <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-2">
+                            <p class="text-[10px] font-semibold text-slate-400 uppercase">Total TUT</p>
+                            <p id="tut-total-val" class="text-base font-black font-mono text-amber-400 mt-0.5">0.0 dtk</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hand Stance & Target Muscle Card (Front Camera Sensor) -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="p-1.5 rounded-lg bg-violet-500/15 text-violet-400">
+                                <i data-lucide="hand" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <span class="text-xs font-bold uppercase tracking-wider text-slate-300 block">Posisi Tangan &amp; Target Otot</span>
+                                <span id="grip-ratio-text" class="text-[11px] text-slate-500">Aktif saat sensor kamera Depan</span>
+                            </div>
+                        </div>
+                        <span id="grip-badge" class="px-3 py-1 rounded-full text-xs font-extrabold bg-slate-800 text-slate-400 border border-slate-700">
+                            Menunggu Depan
+                        </span>
+                    </div>
+
+                    <!-- Active Muscle Focus Callout -->
+                    <div id="muscle-focus-box" class="bg-slate-950/90 border border-slate-800 rounded-2xl px-3.5 py-2.5 mb-3 flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-medium">Fokus Otot Utama:</span>
+                        <span id="muscle-focus-text" class="text-xs sm:text-sm font-bold text-emerald-400">Dada, Bahu &amp; Triceps</span>
+                    </div>
+
+                    <!-- Breakdown Counter per Hand Stance -->
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div id="card-grip-diamond" class="bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5 transition-all">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-sky-400">Diamond / Rapat</p>
+                            <p id="rep-diamond" class="text-xl font-black text-white tabular-nums my-0.5">0</p>
+                            <p class="text-[10px] text-slate-400">Triceps &amp; Inner</p>
+                        </div>
+                        <div id="card-grip-normal" class="bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5 transition-all">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Normal</p>
+                            <p id="rep-normal" class="text-xl font-black text-white tabular-nums my-0.5">0</p>
+                            <p class="text-[10px] text-slate-400">Seimbang</p>
+                        </div>
+                        <div id="card-grip-wide" class="bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5 transition-all">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-amber-400">Lebar (Wide)</p>
+                            <p id="rep-wide" class="text-xl font-black text-white tabular-nums my-0.5">0</p>
+                            <p class="text-[10px] text-slate-400">Outer Chest</p>
                         </div>
                     </div>
                 </div>
@@ -326,11 +452,11 @@
                     <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg flex flex-col justify-between">
                         <div class="flex items-center gap-2 text-slate-400 mb-2">
                             <i data-lucide="timer" class="w-4 h-4 text-sky-400"></i>
-                            <span class="text-xs font-bold uppercase tracking-wider">Durasi Latihan</span>
+                            <span id="timer-card-title" class="text-xs font-bold uppercase tracking-wider">Durasi Latihan</span>
                         </div>
                         <div>
                             <p id="timer-display" class="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">00:00</p>
-                            <p class="text-[11px] text-slate-500 mt-0.5">Menit : Detik</p>
+                            <p id="timer-card-sub" class="text-[11px] text-slate-500 mt-0.5">Menit : Detik</p>
                         </div>
                     </div>
 
@@ -352,6 +478,83 @@
             </div>
         </div>
     </main>
+
+    <!-- Workout Summary Modal (Kartu Hasil Latihan) -->
+    <div id="summary-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700/80 rounded-3xl max-w-md w-full p-6 shadow-2xl relative my-auto">
+            <button onclick="closeSummaryModal()" class="absolute top-4 right-4 p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                    <i data-lucide="trophy" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <span class="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Laporan Sesi AI</span>
+                    <h2 class="text-xl font-black text-white">Kartu Hasil Latihan</h2>
+                </div>
+            </div>
+
+            <!-- Big Score Banner -->
+            <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 mb-4 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-slate-400 font-semibold">Total Push-Up Sah</p>
+                    <p class="text-4xl font-black text-white tabular-nums mt-0.5"><span id="sum-reps">0</span> <span class="text-sm font-semibold text-slate-400">rep</span></p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-slate-400 font-semibold">Skor Kualitas Postur</p>
+                    <p id="sum-form-score" class="text-3xl font-black text-emerald-400 tabular-nums mt-0.5">100%</p>
+                </div>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="grid grid-cols-3 gap-2.5 mb-4 text-center">
+                <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-3">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">Durasi</p>
+                    <p id="sum-duration" class="text-sm font-black font-mono text-white mt-1">00:00</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-3">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">Rata2 Tempo</p>
+                    <p id="sum-avg-tempo" class="text-sm font-black font-mono text-cyan-400 mt-1">0.0 dtk</p>
+                </div>
+                <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-3">
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">Kalori</p>
+                    <p id="sum-calories" class="text-sm font-black font-mono text-orange-400 mt-1">0.0 kkal</p>
+                </div>
+            </div>
+
+            <!-- Muscle Breakdown Bar -->
+            <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-3.5 mb-5">
+                <p class="text-xs font-bold text-slate-300 mb-2">Distribusi Variasi &amp; Otot Terlatih:</p>
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-sky-400 font-semibold">Diamond / Rapat (Triceps):</span>
+                        <span id="sum-diamond" class="font-bold text-white">0 rep</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-emerald-400 font-semibold">Normal (Dada &amp; Bahu):</span>
+                        <span id="sum-normal" class="font-bold text-white">0 rep</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-amber-400 font-semibold">Lebar / Wide (Outer Chest):</span>
+                        <span id="sum-wide" class="font-bold text-white">0 rep</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <button type="button" onclick="copySummaryText()" class="py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                    <i data-lucide="copy" class="w-4 h-4"></i>
+                    <span>Salin Laporan</span>
+                </button>
+                <button type="button" onclick="closeSummaryModal()" class="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm transition active:scale-95">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="border-t border-slate-800/80 bg-slate-950 py-4 mt-8">
@@ -377,10 +580,19 @@
         let isModelLoaded = false;
         let isCameraRunning = false;
         let isPaused = false;
+        let isAutoPaused = false;
+        let autoPauseEnabled = true;
+        let voiceCoachEnabled = true;
         let facingMode = "user"; // 'user' (depan) or 'environment' (belakang)
         let cameraViewMode = "auto"; // 'auto' | 'side' | 'front'
         let animationFrameId = null;
         let lastVideoTime = -1;
+
+        // Workout Mode ('normal' | 'challenge60')
+        let workoutMode = "normal";
+        const CHALLENGE_DURATION = 60;
+        let challengeRemaining = CHALLENGE_DURATION;
+        let personalBest60s = 0;
 
         // Workout & Rep State
         let repCount = 0;
@@ -389,9 +601,35 @@
         let targetReachedNotified = false;
         let soundEnabled = true;
 
+        // Tempo & Form Quality Tracking
+        let repStartTimeMs = 0;
+        let bottomReachedTimeMs = 0;
+        let lastDownDuration = 0;
+        let lastUpDuration = 0;
+        let totalTimeUnderTension = 0;
+        const repDurations = [];
+        let goodFormFrames = 0;
+        let totalActiveFrames = 0;
+
+        // Auto-Pause Tracking
+        let outOfPositionFrames = 0;
+        let readyPositionFrames = 0;
+        const OUT_OF_POS_THRESHOLD = 45; // ~1.5 seconds of standing/leaving frame
+        const READY_POS_THRESHOLD = 18;  // ~0.6 seconds back in plank position
+
+        // Hand Stance / Grip Tracking State (Front View)
+        let currentGripType = "normal"; // 'diamond' | 'normal' | 'wide'
+        let activeOrientationState = "side"; // 'side' | 'front'
+        const gripRepCounts = {
+            diamond: 0,
+            normal: 0,
+            wide: 0
+        };
+
         // Angle & Front-depth smoothing buffer
         const angleHistory = [];
         const depthHistory = [];
+        const gripRatioHistory = [];
         const SMOOTHING_WINDOW = 4;
 
         // Timer State
@@ -417,14 +655,29 @@
         const camBtnText = document.getElementById("cam-btn-text");
         const btnPause = document.getElementById("btn-pause");
         const pauseBtnText = document.getElementById("pause-btn-text");
+        const btnFinish = document.getElementById("btn-finish");
         const btnSwitchCam = document.getElementById("btn-switch-cam");
         const btnReset = document.getElementById("btn-reset");
         const btnSound = document.getElementById("btn-sound");
+        const btnVoice = document.getElementById("btn-voice");
+        const btnAutoPause = document.getElementById("btn-autopause");
 
         const pauseOverlay = document.getElementById("pause-overlay");
+        const pauseOverlayTitle = document.getElementById("pause-overlay-title");
+        const pauseOverlayDesc = document.getElementById("pause-overlay-desc");
         const liveStatusText = document.getElementById("live-status-text");
         const liveDotPing = document.getElementById("live-dot-ping");
         const liveDotCore = document.getElementById("live-dot-core");
+
+        const modeNormalBtn = document.getElementById("mode-normal-btn");
+        const modeChallengeBtn = document.getElementById("mode-challenge-btn");
+        const counterHeaderLabel = document.getElementById("counter-header-label");
+        const targetSuffix = document.getElementById("target-suffix");
+        const pbBadge = document.getElementById("pb-badge");
+        const pbCountEl = document.getElementById("pb-count");
+        const progressLabelText = document.getElementById("progress-label-text");
+        const targetSelectorRow = document.getElementById("target-selector-row");
+        const challengeInfoRow = document.getElementById("challenge-info-row");
 
         const repCountEl = document.getElementById("rep-count");
         const stageBadgeEl = document.getElementById("stage-badge");
@@ -432,6 +685,11 @@
         const targetInputEl = document.getElementById("target-input");
         const progressPercentEl = document.getElementById("progress-percent");
         const progressBarEl = document.getElementById("progress-bar");
+
+        const tempoStatusBadge = document.getElementById("tempo-status-badge");
+        const tempoDownVal = document.getElementById("tempo-down-val");
+        const tempoUpVal = document.getElementById("tempo-up-val");
+        const tutTotalVal = document.getElementById("tut-total-val");
 
         const elbowAngleValEl = document.getElementById("elbow-angle-val");
         const angleBarEl = document.getElementById("angle-bar");
@@ -448,13 +706,51 @@
         const bodyAngleText = document.getElementById("body-angle-text");
         const viewModeBtns = document.querySelectorAll(".view-mode-btn");
 
+        // Hand Stance & Muscle DOM Elements
+        const handGripHud = document.getElementById("hand-grip-hud");
+        const handGripHudText = document.getElementById("hand-grip-hud-text");
+        const gripRatioText = document.getElementById("grip-ratio-text");
+        const gripBadge = document.getElementById("grip-badge");
+        const muscleFocusText = document.getElementById("muscle-focus-text");
+        const repDiamondEl = document.getElementById("rep-diamond");
+        const repNormalEl = document.getElementById("rep-normal");
+        const repWideEl = document.getElementById("rep-wide");
+        const cardGripDiamond = document.getElementById("card-grip-diamond");
+        const cardGripNormal = document.getElementById("card-grip-normal");
+        const cardGripWide = document.getElementById("card-grip-wide");
+
+        const timerCardTitle = document.getElementById("timer-card-title");
+        const timerCardSub = document.getElementById("timer-card-sub");
         const timerDisplayEl = document.getElementById("timer-display");
         const caloriesDisplayEl = document.getElementById("calories-display");
 
         // ==========================================
-        // 3. WEB AUDIO API (SYNTHESIZED BEEP)
+        // 3. WEB AUDIO API & AI VOICE COACH (TTS)
         // ==========================================
         let audioCtx = null;
+        let lastVoiceFeedbackTime = 0;
+
+        function speakCoach(text, priority = false) {
+            if (!voiceCoachEnabled || !("speechSynthesis" in window)) return;
+            const now = Date.now();
+            if (!priority && now - lastVoiceFeedbackTime < 4500) return;
+
+            try {
+                if (priority) {
+                    window.speechSynthesis.cancel();
+                } else if (window.speechSynthesis.speaking) {
+                    return;
+                }
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = "id-ID";
+                utterance.rate = 1.12;
+                utterance.pitch = 1.02;
+                window.speechSynthesis.speak(utterance);
+                lastVoiceFeedbackTime = now;
+            } catch (e) {
+                // Ignore speech errors
+            }
+        }
 
         function playTone(freq = 880, duration = 0.12, type = "sine", delay = 0) {
             if (!soundEnabled) return;
@@ -596,6 +892,15 @@
             return sum / depthHistory.length;
         }
 
+        function getSmoothedGripRatio(rawRatio) {
+            gripRatioHistory.push(rawRatio);
+            if (gripRatioHistory.length > 6) {
+                gripRatioHistory.shift();
+            }
+            const sum = gripRatioHistory.reduce((acc, val) => acc + val, 0);
+            return sum / gripRatioHistory.length;
+        }
+
         function calculateDistance2D(p1, p2) {
             return Math.hypot(p1.x - p2.x, p1.y - p2.y);
         }
@@ -603,14 +908,59 @@
         // ==========================================
         // 7. CAMERA CONTROL & WORKOUT TIMER
         // ==========================================
-        function startWorkoutTimer() {
-            if (timerInterval) return;
-            timerInterval = setInterval(() => {
-                elapsedSeconds++;
+        function updateTimerDisplay() {
+            if (workoutMode === "challenge60") {
+                const secs = String(challengeRemaining).padStart(2, "0");
+                timerDisplayEl.textContent = `00:${secs}`;
+                const pct = Math.min(100, Math.round(((CHALLENGE_DURATION - challengeRemaining) / CHALLENGE_DURATION) * 100));
+                progressPercentEl.textContent = `${challengeRemaining} dtk`;
+                progressBarEl.style.width = `${100 - pct}%`;
+            } else {
                 const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
                 const secs = String(elapsedSeconds % 60).padStart(2, "0");
                 timerDisplayEl.textContent = `${mins}:${secs}`;
+            }
+        }
+
+        function startWorkoutTimer() {
+            if (timerInterval) return;
+            timerInterval = setInterval(() => {
+                if (workoutMode === "challenge60") {
+                    if (challengeRemaining > 0) {
+                        challengeRemaining--;
+                        updateTimerDisplay();
+                        if (challengeRemaining === 10) {
+                            speakCoach("Sepuluh detik terakhir!", true);
+                        } else if (challengeRemaining <= 3 && challengeRemaining > 0) {
+                            playTone(780, 0.08);
+                        } else if (challengeRemaining === 0) {
+                            handleChallengeFinished();
+                        }
+                    }
+                } else {
+                    elapsedSeconds++;
+                    updateTimerDisplay();
+                }
             }, 1000);
+        }
+
+        function handleChallengeFinished() {
+            stopWorkoutTimer();
+            playTargetCompleted();
+            let isNewRecord = false;
+            if (repCount > personalBest60s) {
+                personalBest60s = repCount;
+                pbCountEl.textContent = personalBest60s;
+                isNewRecord = true;
+            }
+            speakCoach(
+                isNewRecord
+                    ? `Waktu habis! Rekor baru ${repCount} push up!`
+                    : `Waktu habis! Total ${repCount} push up.`,
+                true
+            );
+            setPausedState(true, true, false);
+            openSummaryModal();
         }
 
         function stopWorkoutTimer() {
@@ -646,10 +996,14 @@
                 canvas.height = video.videoHeight;
 
                 isCameraRunning = true;
-                setPausedState(false, true);
+                isAutoPaused = false;
+                outOfPositionFrames = 0;
+                readyPositionFrames = 0;
+                setPausedState(false, true, false);
                 updateCameraUI(true);
                 startWorkoutTimer();
                 hideToast();
+                speakCoach("Kamera aktif. Posisikan tubuh untuk mulai.", true);
 
                 // Start real-time detection loop
                 lastVideoTime = -1;
@@ -663,7 +1017,8 @@
 
         function stopCamera() {
             isCameraRunning = false;
-            setPausedState(false, true);
+            isAutoPaused = false;
+            setPausedState(false, true, false);
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -676,15 +1031,15 @@
             updateCameraUI(false);
         }
 
-        function setPausedState(paused, silent = false) {
+        function setPausedState(paused, silent = false, byAuto = false) {
             isPaused = paused;
+            isAutoPaused = paused ? byAuto : false;
 
             if (!isCameraRunning) {
                 btnPause.disabled = true;
                 pauseOverlay.classList.add("hidden");
-                pauseBtnText.textContent = "Jeda";
                 btnPause.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i><span>Jeda</span>`;
-                btnPause.className = "col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 disabled:bg-slate-800/60 disabled:border-slate-800 disabled:text-slate-600 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95";
+                btnPause.className = "col-span-1 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 disabled:bg-slate-800/60 disabled:border-slate-800 disabled:text-slate-600 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-1.5 transition active:scale-95";
                 lucide.createIcons();
                 return;
             }
@@ -697,17 +1052,26 @@
                 pauseOverlay.classList.remove("hidden");
                 formFeedbackOverlay.classList.add("hidden");
 
+                if (isAutoPaused) {
+                    pauseOverlayTitle.textContent = "AUTO-PAUSE AKTIF";
+                    pauseOverlayDesc.innerHTML = `Anda berdiri atau keluar dari area sensor. Kembali ke posisi <span class="font-bold text-white">Plank / Push-Up</span> untuk lanjut otomatis.`;
+                    liveStatusText.textContent = "AUTO-PAUSE";
+                } else {
+                    pauseOverlayTitle.textContent = "LATIHAN DIJEDA";
+                    pauseOverlayDesc.innerHTML = `Hitungan repetisi &amp; waktu berhenti sementara. Tekan <span class="font-bold text-white">Lanjutkan</span> atau <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-amber-300">Spasi</kbd>.`;
+                    liveStatusText.textContent = "DIJEDA";
+                }
+
                 // Update HUD pill to Paused
-                liveStatusText.textContent = "DIJEDA";
                 liveDotPing.classList.add("hidden");
                 liveDotCore.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400";
 
                 // Update Stage Badge
-                updateStageBadge("DIJEDA", "bg-amber-500/20 text-amber-400 border-amber-500/50");
+                updateStageBadge(isAutoPaused ? "AUTO-JEDA" : "DIJEDA", "bg-amber-500/20 text-amber-400 border-amber-500/50");
 
                 // Update Pause Button to Resume
-                btnPause.className = "col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-sky-500 hover:bg-sky-600 text-slate-950 border border-sky-400 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-sky-500/20";
-                btnPause.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i><span>Lanjutkan</span>`;
+                btnPause.className = "col-span-1 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-sky-500 hover:bg-sky-600 text-slate-950 border border-sky-400 font-bold text-sm flex items-center justify-center gap-1.5 transition active:scale-95 shadow-lg shadow-sky-500/20";
+                btnPause.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i><span>Lanjut</span>`;
             } else {
                 // Resume workout timer & hide pause overlay
                 startWorkoutTimer();
@@ -717,6 +1081,8 @@
                 // Clear smoothing history so post-pause movement starts fresh
                 angleHistory.length = 0;
                 depthHistory.length = 0;
+                gripRatioHistory.length = 0;
+                outOfPositionFrames = 0;
 
                 // Update HUD pill back to Active
                 liveStatusText.textContent = "AI Aktif";
@@ -733,7 +1099,7 @@
                 }
 
                 // Update Button back to Pause
-                btnPause.className = "col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95";
+                btnPause.className = "col-span-1 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-1.5 transition active:scale-95";
                 btnPause.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i><span>Jeda</span>`;
             }
 
@@ -745,7 +1111,7 @@
 
         function togglePause() {
             if (!isCameraRunning) return;
-            setPausedState(!isPaused);
+            setPausedState(!isPaused, false, false);
         }
 
         function updateCameraUI(running) {
@@ -758,7 +1124,7 @@
                 btnPause.disabled = false;
 
                 btnToggleCam.className = "col-span-2 sm:col-span-2 py-3.5 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-rose-500/20";
-                camBtnText.textContent = "Hentikan Kamera";
+                camBtnText.textContent = "Hentikan";
             } else {
                 cameraPlaceholder.classList.remove("hidden");
                 canvasHudTop.classList.add("hidden");
@@ -780,15 +1146,59 @@
             const startTimeMs = performance.now();
             if (lastVideoTime !== video.currentTime) {
                 lastVideoTime = video.currentTime;
-                if (isPaused) {
+                if (isPaused && !isAutoPaused) {
+                    // Manual pause: just mirror live video without detection
                     drawPausedVideoFrame();
                 } else {
                     const results = poseLandmarker.detectForVideo(video, startTimeMs);
-                    processAndDrawFrame(results);
+                    if (isPaused && isAutoPaused) {
+                        // Auto-paused: check if user has returned to plank position
+                        checkAutoResume(results);
+                    } else {
+                        processAndDrawFrame(results);
+                    }
                 }
             }
 
             animationFrameId = requestAnimationFrame(predictWebcam);
+        }
+
+        function isInPlankOrPushupPosture(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12];
+            const le = landmarks[13], re = landmarks[14];
+            const lw = landmarks[15], rw = landmarks[16];
+            const lh = landmarks[23], rh = landmarks[24];
+
+            const shouldersVis = (ls.visibility || 0) > 0.45 || (rs.visibility || 0) > 0.45;
+            const armsVis = ((le.visibility || 0) > 0.4 && (lw.visibility || 0) > 0.4) ||
+                            ((re.visibility || 0) > 0.4 && (rw.visibility || 0) > 0.4);
+            if (!shouldersVis || !armsVis) return false;
+
+            const midShoulderY = (ls.y + rs.y) / 2;
+            const midWristY = (lw.y + rw.y) / 2;
+            const midHipY = (lh.y + rh.y) / 2;
+
+            // In push-up position, wrists are below or near shoulder level on screen (larger Y)
+            // and hips are not drastically below shoulders as when standing upright
+            const wristsBelowShoulders = midWristY >= midShoulderY - 0.08;
+            const notStandingUpright = (lh.visibility || 0) < 0.4 || (midHipY - midShoulderY) < 0.36;
+            return wristsBelowShoulders && notStandingUpright;
+        }
+
+        function checkAutoResume(results) {
+            drawPausedVideoFrame();
+            if (!autoPauseEnabled) return;
+
+            if (results.landmarks && results.landmarks.length > 0 && isInPlankOrPushupPosture(results.landmarks[0])) {
+                readyPositionFrames++;
+                if (readyPositionFrames >= READY_POS_THRESHOLD) {
+                    readyPositionFrames = 0;
+                    setPausedState(false, false, false);
+                    speakCoach("Posisi siap, lanjutkan!", true);
+                }
+            } else {
+                readyPositionFrames = Math.max(0, readyPositionFrames - 1);
+            }
         }
 
         function drawPausedVideoFrame() {
@@ -826,6 +1236,21 @@
             if (results.landmarks && results.landmarks.length > 0) {
                 const landmarks = results.landmarks[0];
 
+                // Smart Auto-Pause Check when user stands up or leaves pushup position
+                if (autoPauseEnabled && repCount > 0 && !isInPlankOrPushupPosture(landmarks)) {
+                    outOfPositionFrames++;
+                    if (outOfPositionFrames >= OUT_OF_POS_THRESHOLD) {
+                        outOfPositionFrames = 0;
+                        readyPositionFrames = 0;
+                        setPausedState(true, false, true);
+                        speakCoach("Auto jeda aktif.", true);
+                        ctx.restore();
+                        return;
+                    }
+                } else {
+                    outOfPositionFrames = 0;
+                }
+
                 const leftShoulder = landmarks[11];
                 const rightShoulder = landmarks[12];
                 const leftElbow = landmarks[13];
@@ -849,13 +1274,14 @@
                     const torsoHeightY = Math.abs(
                         ((leftShoulder.y + rightShoulder.y) / 2) - ((leftHip.y + rightHip.y) / 2)
                     );
-                    // In front-facing pushups, shoulders span horizontally significantly relative to torso height
                     if (bothArmsVisible && shoulderSpreadX > Math.max(0.14, torsoHeightY * 0.75)) {
                         activeOrientation = "front";
                     } else {
                         activeOrientation = "side";
                     }
                 }
+
+                activeOrientationState = activeOrientation;
 
                 if (activeOrientation === "front") {
                     processFrontView(
@@ -867,6 +1293,7 @@
                         w, h
                     );
                 } else {
+                    resetHandGripDisplayToSide();
                     processSideView(
                         landmarks,
                         leftShoulder, rightShoulder,
@@ -878,9 +1305,22 @@
                     );
                 }
             } else {
+                if (autoPauseEnabled && repCount > 0) {
+                    outOfPositionFrames++;
+                    if (outOfPositionFrames >= OUT_OF_POS_THRESHOLD) {
+                        outOfPositionFrames = 0;
+                        readyPositionFrames = 0;
+                        setPausedState(true, false, true);
+                        speakCoach("Tubuh keluar layar, auto jeda.", true);
+                        ctx.restore();
+                        return;
+                    }
+                }
                 detectedSideEl.textContent = "-";
                 elbowAngleValEl.textContent = "--°";
                 bodyAngleText.textContent = "--°";
+                handGripHud.classList.add("hidden");
+                handGripHud.classList.remove("flex");
                 updateFormFeedback("Tubuh Tidak Terdeteksi — Mundur Sedikit", false);
             }
 
@@ -921,20 +1361,26 @@
                 const barPct = Math.min(100, Math.max(0, (elbowAngle / 180) * 100));
                 angleBarEl.style.width = `${barPct}%`;
 
-                // Push-Up State Machine (Side View)
+                // Push-Up State Machine + Tempo Tracking (Side View)
                 if (elbowAngle > 150) {
                     if (pushupStage === "TURUN") {
-                        registerValidRep();
+                        registerValidRep(null);
                     }
                     pushupStage = "NAIK";
                     updateStageBadge("NAIK", "bg-sky-500/20 text-sky-400 border-sky-500/40");
                 } else if (elbowAngle < 90 && (pushupStage === "NAIK" || pushupStage === "SIAP")) {
+                    if (pushupStage !== "TURUN") {
+                        bottomReachedTimeMs = performance.now();
+                    }
                     pushupStage = "TURUN";
                     updateStageBadge("TURUN", "bg-amber-500/20 text-amber-400 border-amber-500/40");
+                } else if (elbowAngle <= 145 && elbowAngle >= 90 && pushupStage === "NAIK" && repStartTimeMs === 0) {
+                    repStartTimeMs = performance.now();
                 }
 
                 // Body Alignment Check (Shoulder - Hip - Ankle)
                 let isGoodForm = true;
+                totalActiveFrames++;
                 if ((hip.visibility || 0) > 0.4 && (ankle.visibility || 0) > 0.4) {
                     const bodyAngle = Math.round(calculateAngle(shoulder, hip, ankle));
                     bodyAngleText.textContent = `${bodyAngle}°`;
@@ -943,16 +1389,20 @@
                         isGoodForm = false;
                         if (hip.y < shoulder.y) {
                             updateFormFeedback("Pinggul Terlalu Tinggi! Luruskan Badan", false);
+                            speakCoach("Pinggul terlalu tinggi, luruskan badan.");
                         } else {
                             updateFormFeedback("Pinggul Terlalu Turun! Kencangkan Perut", false);
+                            speakCoach("Pinggul turun, kencangkan perut.");
                         }
                     } else {
+                        goodFormFrames++;
                         updateFormFeedback(
                             pushupStage === "TURUN" ? "Bagus! Dorong Tubuh ke Atas" : "Postur Samping Lurus & Ideal",
                             true
                         );
                     }
                 } else {
+                    goodFormFrames++;
                     bodyAngleText.textContent = "--°";
                     updateFormFeedback("Pastikan Kaki & Pinggul Terlihat Kamera", true);
                 }
@@ -1009,62 +1459,120 @@
                 const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
                 const avgElbowAngle = Math.round(getSmoothedAngle((leftAngle + rightAngle) / 2));
 
-                // 2. Shoulder-to-Wrist Vertical Drop Ratio normalized by Shoulder Width
+                // 2. Hand Width / Stance Detection (Wrist Span vs Shoulder Width)
                 const shoulderWidth = Math.max(0.05, calculateDistance2D(leftShoulder, rightShoulder));
+                const wristWidth = Math.abs(leftWrist.x - rightWrist.x);
+                const rawGripRatio = wristWidth / shoulderWidth;
+                const gripRatio = getSmoothedGripRatio(rawGripRatio);
+
+                // Also check index finger tips (landmarks 19 & 20) if visible for Diamond touch detection
+                const leftIndex = landmarks[19];
+                const rightIndex = landmarks[20];
+                const handsTouching =
+                    leftIndex && rightIndex &&
+                    (leftIndex.visibility || 0) > 0.35 &&
+                    (rightIndex.visibility || 0) > 0.35 &&
+                    calculateDistance2D(leftIndex, rightIndex) < shoulderWidth * 0.45;
+
+                let gripInfo;
+                if (handsTouching || gripRatio < 0.85) {
+                    currentGripType = "diamond";
+                    gripInfo = {
+                        key: "diamond",
+                        label: handsTouching ? "Diamond Push-Up" : "Tangan Rapat (Close)",
+                        hudLabel: handsTouching ? "Diamond (Triceps)" : "Rapat (Triceps)",
+                        muscle: "Triceps & Dada Bagian Dalam",
+                        downHint: "Dada Rendah! Fokus Dorong dengan Triceps",
+                        upHint: "Posisi Rapat/Diamond — Fokus Triceps",
+                        badgeClass: "bg-sky-500/20 text-sky-300 border-sky-500/50",
+                        lineColor: "#38bdf8"
+                    };
+                } else if (gripRatio > 1.45) {
+                    currentGripType = "wide";
+                    gripInfo = {
+                        key: "wide",
+                        label: "Tangan Lebar (Wide)",
+                        hudLabel: "Lebar (Outer Chest)",
+                        muscle: "Otot Dada Luar (Outer Chest)",
+                        downHint: "Dada Rendah! Kontraksikan Otot Dada",
+                        upHint: "Posisi Lebar — Fokus Dada Luar (Chest)",
+                        badgeClass: "bg-amber-500/20 text-amber-300 border-amber-500/50",
+                        lineColor: "#fbbf24"
+                    };
+                } else {
+                    currentGripType = "normal";
+                    gripInfo = {
+                        key: "normal",
+                        label: "Tangan Normal",
+                        hudLabel: "Normal (Seimbang)",
+                        muscle: "Dada Tengah, Bahu & Triceps",
+                        downHint: "Dada Rendah! Dorong Naik Seimbang",
+                        upHint: "Posisi Normal — Dada & Bahu Seimbang",
+                        badgeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/50",
+                        lineColor: "#10b981"
+                    };
+                }
+
+                updateHandGripUI(gripInfo, gripRatio);
+
+                // 3. Shoulder-to-Wrist Vertical Drop Ratio normalized by Shoulder Width
                 const midShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
                 const midWristY = (leftWrist.y + rightWrist.y) / 2;
-                // When arms are extended (UP), midWristY - midShoulderY is large (~0.75 - 1.1x shoulderWidth).
-                // When chest lowers near floor (DOWN), midShoulderY approaches midWristY (< 0.42x shoulderWidth).
                 const rawDepthRatio = Math.max(0, (midWristY - midShoulderY) / shoulderWidth);
                 const depthRatio = getSmoothedDepth(rawDepthRatio);
                 const depthPct = Math.min(100, Math.round(depthRatio * 100));
 
                 // Update Primary Gauge with Bilateral Elbow Angle
                 elbowAngleValEl.textContent = `${avgElbowAngle}°`;
-                const barPct = Math.min(100, Math.max(0, (avgElbowAngle / 180) * 100));
-                angleBarEl.style.width = `${barPct}%`;
-
-                // 3. Symmetry Check (Left vs Right Elbow & Shoulder tilt)
-                const elbowDiff = Math.abs(leftAngle - rightAngle);
-                const shoulderTilt = Math.abs(leftShoulder.y - rightShoulder.y) / shoulderWidth;
-                const isSymmetrical = elbowDiff <= 24 && shoulderTilt <= 0.22;
-
-                // 4. Push-Up State Machine (Front View combines Elbow Angle + Shoulder Drop)
-                const isAtTop = avgElbowAngle > 145 && depthRatio > 0.52;
-                const isAtBottom = avgElbowAngle < 102 || depthRatio < 0.42;
+                // 5. Push-Up State Machine + Tempo Tracking (Front View)
+                const bottomAngleThreshold = currentGripType === "wide" ? 108 : 100;
+                const bottomDepthThreshold = currentGripType === "wide" ? 0.38 : 0.44;
+                const isAtTop = avgElbowAngle > 144 && depthRatio > 0.50;
+                const isAtBottom = avgElbowAngle < bottomAngleThreshold || depthRatio < bottomDepthThreshold;
 
                 if (isAtTop) {
                     if (pushupStage === "TURUN") {
-                        registerValidRep();
+                        registerValidRep(currentGripType);
                     }
                     pushupStage = "NAIK";
                     updateStageBadge("NAIK", "bg-sky-500/20 text-sky-400 border-sky-500/40");
                 } else if (isAtBottom && (pushupStage === "NAIK" || pushupStage === "SIAP")) {
+                    if (pushupStage !== "TURUN") {
+                        bottomReachedTimeMs = performance.now();
+                    }
                     pushupStage = "TURUN";
                     updateStageBadge("TURUN", "bg-amber-500/20 text-amber-400 border-amber-500/40");
+                } else if (!isAtTop && !isAtBottom && pushupStage === "NAIK" && repStartTimeMs === 0) {
+                    repStartTimeMs = performance.now();
                 }
 
-                // 5. Front Form Evaluation (Symmetry & Hip Sag Check)
+                // 6. Front Form Evaluation (Symmetry, Hip Sag & Active Hand Grip Feedback)
                 const midHipY = (leftHip.y + rightHip.y) / 2;
                 const hipsVisible = (leftHip.visibility || 0) > 0.4 && (rightHip.visibility || 0) > 0.4;
+                totalActiveFrames++;
 
                 bodyAngleText.textContent = `${depthPct}%`;
 
                 if (!isSymmetrical) {
                     updateFormFeedback("Dorong Seimbang! Lengan Kiri & Kanan Tidak Rata", false);
+                    speakCoach("Dorong seimbang kedua lengan.");
                 } else if (hipsVisible && midHipY > midWristY + 0.04) {
                     updateFormFeedback("Pinggul Terlalu Turun! Kencangkan Core", false);
+                    speakCoach("Angkat pinggul sedikit, kencangkan perut.");
                 } else {
+                    goodFormFrames++;
                     updateFormFeedback(
-                        pushupStage === "TURUN" ? "Dada Rendah! Dorong Naik Seimbang" : "Postur Depan Simetris & Stabil",
+                        pushupStage === "TURUN" ? gripInfo.downHint : gripInfo.upHint,
                         true
                     );
                 }
 
-                // 6. Draw Bilateral Front Skeleton
+                // 7. Draw Bilateral Front Skeleton & Hand Span Guide Line
                 const lineColor = isSymmetrical ? "#10b981" : "#f43f5e";
                 // Shoulder bridge
                 drawBone(leftShoulder, rightShoulder, "#38bdf8", 5);
+                // Hand width span dashed indicator line between wrists
+                drawDashedWristLine(leftWrist, rightWrist, gripInfo.lineColor);
                 // Left arm
                 drawBone(leftShoulder, leftElbow, lineColor, 6);
                 drawBone(leftElbow, leftWrist, lineColor, 6);
@@ -1085,27 +1593,121 @@
                 drawJoint(rightShoulder, "#ffffff", 9);
                 drawJoint(leftElbow, elbowColor, 10);
                 drawJoint(rightElbow, elbowColor, 10);
-                drawJoint(leftWrist, "#ffffff", 8);
-                drawJoint(rightWrist, "#ffffff", 8);
+                drawJoint(leftWrist, gripInfo.lineColor, 9);
+                drawJoint(rightWrist, gripInfo.lineColor, 9);
 
                 // Draw Left & Right Elbow Angle Labels
                 drawUnmirroredCanvasLabel(leftElbow.x * w, leftElbow.y * h - 16, `${Math.round(leftAngle)}°`);
                 drawUnmirroredCanvasLabel(rightElbow.x * w, rightElbow.y * h - 16, `${Math.round(rightAngle)}°`);
+
+                // Draw Hand Span Label right between both hands
+                const midWristX = ((leftWrist.x + rightWrist.x) / 2) * w;
+                const midWristPosY = ((leftWrist.y + rightWrist.y) / 2) * h + 26;
+                drawUnmirroredCanvasLabel(midWristX, midWristPosY, `${gripInfo.hudLabel} (${gripRatio.toFixed(1)}x)`);
             } else {
                 bodyAngleText.textContent = "--%";
-                updateFormFeedback("Hadapkan Bahu & Kedua Lengan Penuh ke Kamera", false);
+                handGripHud.classList.add("hidden");
+                handGripHud.classList.remove("flex");
+                updateFormFeedback("Hadapkan Bahu & Kedua Tangan Penuh ke Kamera", false);
             }
         }
 
-        function registerValidRep() {
+        function drawDashedWristLine(p1, p2, color) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([8, 6]);
+            ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
+            ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function updateHandGripUI(gripInfo, gripRatio) {
+            // Show HUD Pill on Video
+            handGripHud.classList.remove("hidden");
+            handGripHud.classList.add("flex");
+            handGripHudText.textContent = gripInfo.hudLabel;
+
+            // Update Card Badge & Muscle Focus
+            gripBadge.textContent = gripInfo.label;
+            gripBadge.className = `px-3 py-1 rounded-full text-xs font-extrabold border transition-colors ${gripInfo.badgeClass}`;
+            gripRatioText.textContent = `Lebar tangan: ${gripRatio.toFixed(2)}x lebar bahu`;
+            muscleFocusText.textContent = gripInfo.muscle;
+
+            // Highlight active grip breakdown card
+            const inactiveClass = "bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5 transition-all opacity-75";
+            cardGripDiamond.className = gripInfo.key === "diamond"
+                ? "bg-sky-950/50 border-2 border-sky-400/80 rounded-2xl p-2.5 transition-all shadow-md shadow-sky-500/10"
+                : inactiveClass;
+            cardGripNormal.className = gripInfo.key === "normal"
+                ? "bg-emerald-950/50 border-2 border-emerald-400/80 rounded-2xl p-2.5 transition-all shadow-md shadow-emerald-500/10"
+                : inactiveClass;
+            cardGripWide.className = gripInfo.key === "wide"
+                ? "bg-amber-950/50 border-2 border-amber-400/80 rounded-2xl p-2.5 transition-all shadow-md shadow-amber-500/10"
+                : inactiveClass;
+        }
+
+        function resetHandGripDisplayToSide() {
+            handGripHud.classList.add("hidden");
+            handGripHud.classList.remove("flex");
+            gripBadge.textContent = "Mode Samping";
+            gripBadge.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-slate-800 text-slate-400 border border-slate-700";
+            gripRatioText.textContent = "Gunakan mode Depan untuk deteksi lebar tangan";
+            muscleFocusText.textContent = "Dada, Bahu & Triceps (Umum)";
+
+            const neutralCard = "bg-slate-950/70 border border-slate-800 rounded-2xl p-2.5 transition-all";
+            cardGripDiamond.className = neutralCard;
+            cardGripNormal.className = neutralCard;
+            cardGripWide.className = neutralCard;
+        }
+
+        function registerValidRep(gripType = null) {
+            const nowMs = performance.now();
             repCount++;
+            if (activeOrientationState === "front" && gripType && gripRepCounts[gripType] !== undefined) {
+                gripRepCounts[gripType]++;
+            }
+
+            // Calculate Eccentric (Down) & Concentric (Up) Tempo
+            if (bottomReachedTimeMs > 0) {
+                const startDown = repStartTimeMs > 0 ? repStartTimeMs : bottomReachedTimeMs - 900;
+                lastDownDuration = Math.max(0.3, (bottomReachedTimeMs - startDown) / 1000);
+                lastUpDuration = Math.max(0.2, (nowMs - bottomReachedTimeMs) / 1000);
+                const repTotal = lastDownDuration + lastUpDuration;
+                totalTimeUnderTension += repTotal;
+                repDurations.push(repTotal);
+
+                tempoDownVal.textContent = `${lastDownDuration.toFixed(1)} dtk`;
+                tempoUpVal.textContent = `${lastUpDuration.toFixed(1)} dtk`;
+                tutTotalVal.textContent = `${totalTimeUnderTension.toFixed(1)} dtk`;
+
+                if (repTotal < 0.85 && workoutMode !== "challenge60") {
+                    tempoStatusBadge.textContent = "Terlalu Cepat!";
+                    tempoStatusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40";
+                } else {
+                    tempoStatusBadge.textContent = "Tempo Terkontrol";
+                    tempoStatusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                }
+            }
+            repStartTimeMs = 0;
+            bottomReachedTimeMs = 0;
+
             updateRepDisplay();
             playRepSuccess();
 
-            if (repCount >= targetReps && !targetReachedNotified) {
+            if (workoutMode === "normal" && repCount >= targetReps && !targetReachedNotified) {
                 targetReachedNotified = true;
                 playTargetCompleted();
+                speakCoach(`Hebat! Target ${targetReps} push up tercapai!`, true);
                 showToast(`Luar biasa! Target ${targetReps} push-up telah tercapai!`, "success");
+            } else {
+                // Speak rep count via AI Voice Coach
+                const tooFastNote = (lastDownDuration + lastUpDuration > 0 && lastDownDuration + lastUpDuration < 0.85 && workoutMode !== "challenge60")
+                    ? ". Perlambat gerakan"
+                    : "";
+                speakCoach(`${repCount}${tooFastNote}`, true);
             }
         }
 
@@ -1189,15 +1791,20 @@
         // ==========================================
         function updateRepDisplay() {
             repCountEl.textContent = repCount;
+            repDiamondEl.textContent = gripRepCounts.diamond;
+            repNormalEl.textContent = gripRepCounts.normal;
+            repWideEl.textContent = gripRepCounts.wide;
 
             // Update Calories (~0.45 kcal per pushup)
             const kcal = (repCount * 0.45).toFixed(1);
             caloriesDisplayEl.textContent = kcal;
 
-            // Update Progress Bar
-            const pct = Math.min(100, Math.round((repCount / targetReps) * 100));
-            progressPercentEl.textContent = `${pct}%`;
-            progressBarEl.style.width = `${pct}%`;
+            // Update Progress Bar (in Normal Mode; Challenge Mode updates via countdown timer)
+            if (workoutMode === "normal") {
+                const pct = Math.min(100, Math.round((repCount / targetReps) * 100));
+                progressPercentEl.textContent = `${pct}%`;
+                progressBarEl.style.width = `${pct}%`;
+            }
         }
 
         function updateStageBadge(label, classes) {
@@ -1242,11 +1849,121 @@
         // Event Listeners
         btnStartOverlay.addEventListener("click", startCamera);
 
+        // Workout Mode Switcher (Normal Target vs 60s Challenge)
+        function setWorkoutMode(mode) {
+            workoutMode = mode;
+            if (mode === "challenge60") {
+                modeChallengeBtn.className = "py-2 px-3 rounded-xl text-xs font-bold transition bg-amber-500 text-slate-950 shadow flex items-center justify-center gap-1.5";
+                modeNormalBtn.className = "py-2 px-3 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
+
+                counterHeaderLabel.textContent = "Tantangan 60 Detik";
+                targetSuffix.classList.add("hidden");
+                pbBadge.classList.remove("hidden");
+                pbBadge.classList.add("flex");
+                progressLabelText.textContent = "Sisa Waktu Tantangan";
+                targetSelectorRow.classList.add("hidden");
+                challengeInfoRow.classList.remove("hidden");
+                timerCardTitle.textContent = "Hitung Mundur";
+                timerCardSub.textContent = "Sisa Detik AMRAP";
+
+                window.restartChallenge();
+            } else {
+                modeNormalBtn.className = "py-2 px-3 rounded-xl text-xs font-bold transition bg-emerald-500 text-slate-950 shadow flex items-center justify-center gap-1.5";
+                modeChallengeBtn.className = "py-2 px-3 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5";
+
+                counterHeaderLabel.textContent = "Total Push-Up";
+                targetSuffix.classList.remove("hidden");
+                pbBadge.classList.add("hidden");
+                pbBadge.classList.remove("flex");
+                progressLabelText.textContent = "Progres Target Latihan";
+                targetSelectorRow.classList.remove("hidden");
+                challengeInfoRow.classList.add("hidden");
+                timerCardTitle.textContent = "Durasi Latihan";
+                timerCardSub.textContent = "Menit : Detik";
+
+                updateTimerDisplay();
+                updateRepDisplay();
+            }
+            lucide.createIcons();
+        }
+
+        window.restartChallenge = function () {
+            challengeRemaining = CHALLENGE_DURATION;
+            repCount = 0;
+            gripRepCounts.diamond = 0;
+            gripRepCounts.normal = 0;
+            gripRepCounts.wide = 0;
+            pushupStage = "SIAP";
+            updateRepDisplay();
+            updateTimerDisplay();
+            if (isCameraRunning && isPaused) {
+                setPausedState(false, true, false);
+            }
+            showToast("Mode Tantangan 60 Detik siap! Lakukan push-up sebanyak mungkin.", "info");
+        };
+
+        modeNormalBtn.addEventListener("click", () => setWorkoutMode("normal"));
+        modeChallengeBtn.addEventListener("click", () => setWorkoutMode("challenge60"));
+
+        // Summary Modal Functions
+        window.openSummaryModal = function () {
+            const formScore = totalActiveFrames > 0
+                ? Math.min(100, Math.max(50, Math.round((goodFormFrames / totalActiveFrames) * 100)))
+                : 100;
+            const avgTempo = repDurations.length > 0
+                ? (repDurations.reduce((a, b) => a + b, 0) / repDurations.length).toFixed(1)
+                : "0.0";
+
+            document.getElementById("sum-reps").textContent = repCount;
+            document.getElementById("sum-form-score").textContent = `${formScore}%`;
+            document.getElementById("sum-duration").textContent = timerDisplayEl.textContent;
+            document.getElementById("sum-avg-tempo").textContent = `${avgTempo} dtk`;
+            document.getElementById("sum-calories").textContent = `${(repCount * 0.45).toFixed(1)} kkal`;
+
+            document.getElementById("sum-diamond").textContent = `${gripRepCounts.diamond} rep`;
+            document.getElementById("sum-normal").textContent = `${gripRepCounts.normal} rep`;
+            document.getElementById("sum-wide").textContent = `${gripRepCounts.wide} rep`;
+
+            document.getElementById("summary-modal").classList.remove("hidden");
+            lucide.createIcons();
+        };
+
+        window.closeSummaryModal = function () {
+            document.getElementById("summary-modal").classList.add("hidden");
+        };
+
+        window.copySummaryText = function () {
+            const summaryText =
+                `Laporan Latihan Push-Up AI\n` +
+                `• Total Push-Up: ${repCount} rep\n` +
+                `• Kualitas Postur: ${document.getElementById("sum-form-score").textContent}\n` +
+                `• Rata-rata Tempo: ${document.getElementById("sum-avg-tempo").textContent}/rep\n` +
+                `• Rincian Otot: Diamond ${gripRepCounts.diamond} | Normal ${gripRepCounts.normal} | Lebar ${gripRepCounts.wide}\n` +
+                `• Estimasi Kalori: ${(repCount * 0.45).toFixed(1)} kkal`;
+
+            const tempArea = document.createElement("textarea");
+            tempArea.value = summaryText;
+            document.body.appendChild(tempArea);
+            tempArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempArea);
+
+            showToast("Laporan hasil latihan berhasil disalin ke clipboard!", "success");
+        };
+
+        btnFinish.addEventListener("click", () => {
+            if (isCameraRunning && !isPaused) {
+                setPausedState(true, true, false);
+            }
+            openSummaryModal();
+        });
+
         viewModeBtns.forEach((btn) => {
             btn.addEventListener("click", () => {
                 cameraViewMode = btn.dataset.viewMode;
                 angleHistory.length = 0;
                 depthHistory.length = 0;
+                gripRatioHistory.length = 0;
 
                 viewModeBtns.forEach((b) => {
                     if (b === btn) {
@@ -1298,20 +2015,65 @@
 
         btnReset.addEventListener("click", () => {
             repCount = 0;
+            gripRepCounts.diamond = 0;
+            gripRepCounts.normal = 0;
+            gripRepCounts.wide = 0;
             pushupStage = "SIAP";
             targetReachedNotified = false;
             elapsedSeconds = 0;
+            challengeRemaining = CHALLENGE_DURATION;
             angleHistory.length = 0;
             depthHistory.length = 0;
+            gripRatioHistory.length = 0;
 
-            timerDisplayEl.textContent = "00:00";
+            repStartTimeMs = 0;
+            bottomReachedTimeMs = 0;
+            lastDownDuration = 0;
+            lastUpDuration = 0;
+            totalTimeUnderTension = 0;
+            repDurations.length = 0;
+            goodFormFrames = 0;
+            totalActiveFrames = 0;
+
+            tempoDownVal.textContent = "-- dtk";
+            tempoUpVal.textContent = "-- dtk";
+            tutTotalVal.textContent = "0.0 dtk";
+            tempoStatusBadge.textContent = "Menunggu Rep";
+            tempoStatusBadge.className = "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-400 border border-slate-700";
+
+            updateTimerDisplay();
             updateRepDisplay();
             if (isPaused) {
                 updateStageBadge("DIJEDA", "bg-amber-500/20 text-amber-400 border-amber-500/50");
             } else {
                 updateStageBadge("SIAP", "bg-slate-800 text-slate-300 border-slate-700");
             }
-            showToast("Penghitung dan durasi latihan telah direset.", "info");
+            showToast("Penghitung, tempo, dan durasi latihan telah direset.", "info");
+        });
+
+        btnVoice.addEventListener("click", () => {
+            voiceCoachEnabled = !voiceCoachEnabled;
+            document.getElementById("icon-voice-on").classList.toggle("hidden", !voiceCoachEnabled);
+            document.getElementById("icon-voice-off").classList.toggle("hidden", voiceCoachEnabled);
+            if (voiceCoachEnabled) {
+                btnVoice.className = "px-2.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/40 transition active:scale-95 flex items-center gap-1.5 text-xs font-bold";
+                speakCoach("Pelatih suara aktif.", true);
+            } else {
+                btnVoice.className = "px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 transition active:scale-95 flex items-center gap-1.5 text-xs font-bold";
+                if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+            }
+        });
+
+        btnAutoPause.addEventListener("click", () => {
+            autoPauseEnabled = !autoPauseEnabled;
+            if (autoPauseEnabled) {
+                btnAutoPause.className = "px-2.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/40 transition active:scale-95 flex items-center gap-1.5 text-xs font-bold";
+                showToast("Auto-Pause Cerdas diaktifkan.", "info");
+            } else {
+                btnAutoPause.className = "px-2.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 transition active:scale-95 flex items-center gap-1.5 text-xs font-bold";
+                if (isAutoPaused) setPausedState(false, false, false);
+                showToast("Auto-Pause Cerdas dinonaktifkan.", "info");
+            }
         });
 
         btnSound.addEventListener("click", () => {
