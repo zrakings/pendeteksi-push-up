@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pendeteksi & Penghitung Push-Up AI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            500: '#10b981', // Emerald 500
+                            600: '#059669',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090d16;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        /* Pulse animation for active recording indicator */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            70% { transform: scale(1.6); opacity: 0; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+        .pulse-dot::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: inherit;
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
+
+    <!-- Header -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl text-emerald-400">
+                    <i data-lucide="activity" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg tracking-tight text-white leading-tight">
+                        Pendeteksi Push-Up <span class="text-emerald-400">AI</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-400 hidden sm:block">Pelacak Postur & Repetisi Real-Time</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- AI Status Pill -->
+                <div id="ai-status-badge" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-medium">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                    <span id="ai-status-text">Memuat Model AI...</span>
+                </div>
+
+                <!-- Sound Toggle -->
+                <button id="btn-sound" title="Suara Efek" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition active:scale-95">
+                    <i data-lucide="volume-2" id="icon-sound-on" class="w-5 h-5 text-emerald-400"></i>
+                    <i data-lucide="volume-x" id="icon-sound-off" class="w-5 h-5 text-slate-400 hidden"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        
+        <!-- Alert / Message Toast Banner -->
+        <div id="toast-banner" class="hidden mb-4 p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all duration-300">
+            <div class="flex items-center gap-3">
+                <i id="toast-icon" data-lucide="info" class="w-5 h-5 shrink-0"></i>
+                <p id="toast-message" class="text-sm font-medium"></p>
+            </div>
+            <button onclick="hideToast()" class="text-current opacity-70 hover:opacity-100 p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- Left Column: Camera Viewport & Controls (7 cols on desktop) -->
+            <div class="lg:col-span-7 flex flex-col gap-4">
+                
+                <!-- Video & Canvas Wrapper -->
+                <div class="relative w-full aspect-[4/3] sm:aspect-video bg-slate-950 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center group">
+                    
+                    <!-- Hidden raw video element -->
+                    <video id="webcam" class="hidden" playsinline muted></video>
+                    
+                    <!-- Output Canvas for Video + Pose Skeleton -->
+                    <canvas id="output_canvas" class="w-full h-full object-contain"></canvas>
+
+                    <!-- Placeholder Overlay when Camera is Off -->
+                    <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm p-6 text-center z-10">
+                        <div class="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mb-4 text-emerald-400 shadow-lg">
+                            <i data-lucide="camera" class="w-8 h-8"></i>
+                        </div>
+                        <h2 class="text-lg sm:text-xl font-bold text-white mb-2">Kamera Belum Aktif</h2>
+                        <p class="text-xs sm:text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
+                            Mendukung posisi kamera dari <strong>Samping</strong> maupun langsung dari <strong>Depan</strong>. Pilih mode sudut pandang kamera di bawah atau gunakan deteksi otomatis.
+                        </p>
+                        <button id="btn-start-overlay" disabled class="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-400 text-slate-950 font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition transform active:scale-95">
+                            <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                            <span>Mulai Kamera Sekarang</span>
+                        </button>
+                    </div>
+
+                    <!-- Top Overlay HUD inside Canvas -->
+                    <div id="canvas-hud-top" class="hidden absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none z-20">
+                        <!-- Live Indicator -->
+                        <div id="live-status-pill" class="flex items-center gap-2 bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/70 transition-colors">
+                            <span id="live-dot-container" class="relative flex h-2.5 w-2.5">
+                                <span id="live-dot-ping" class="pulse-dot absolute inline-flex h-full w-full rounded-full bg-rose-500"></span>
+                                <span id="live-dot-core" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                            </span>
+                            <span id="live-status-text" class="text-xs font-semibold tracking-wider text-slate-200 uppercase">AI Aktif</span>
+                        </div>
+
+                        <!-- Detected Angle/Side Badge -->
+                        <div id="side-badge" class="bg-slate-950/75 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/70 text-xs font-medium text-slate-300">
+                            Sudut: <span id="detected-side" class="text-emerald-400 font-bold">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Center Pause Overlay inside Canvas -->
+                    <div id="pause-overlay" class="hidden absolute inset-0 z-20 bg-slate-950/55 backdrop-blur-[2px] flex flex-col items-center justify-center p-4 text-center pointer-events-none transition-opacity duration-200">
+                        <div class="bg-slate-900/95 border-2 border-amber-500/80 px-6 py-4 rounded-3xl shadow-2xl flex flex-col items-center gap-2 max-w-xs">
+                            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-0.5">
+                                <i data-lucide="pause-circle" class="w-7 h-7"></i>
+                            </div>
+                            <span class="text-base sm:text-lg font-black tracking-wider text-amber-400 uppercase">LATIHAN DIJEDA</span>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Hitungan repetisi &amp; waktu berhenti sementara. Tekan <span class="font-bold text-white">Lanjutkan</span> atau <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-amber-300">Spasi</kbd>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Form Feedback Banner inside Canvas -->
+                    <div id="form-feedback-overlay" class="hidden absolute bottom-3 left-3 right-3 z-20 pointer-events-none">
+                        <div id="form-banner-box" class="bg-slate-900/90 backdrop-blur-md border border-slate-700 px-4 py-3 rounded-2xl flex items-center justify-between shadow-lg transition-colors duration-200">
+                            <div class="flex items-center gap-3">
+                                <div id="form-icon-bg" class="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                                    <i id="form-icon" data-lucide="check-circle-2" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Evaluasi Postur</p>
+                                    <p id="form-feedback-text" class="text-sm sm:text-base font-bold text-white">Posisi Siap</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p id="secondary-metric-label" class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Kelurusan Badan</p>
+                                <p id="body-angle-text" class="text-sm font-mono font-bold text-emerald-400">--°</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Camera View Mode Selector (Auto / Side / Front) -->
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 px-2 text-xs font-semibold text-slate-300">
+                        <i data-lucide="scan-face" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Posisi Sensor Kamera:</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/80">
+                        <button type="button" data-view-mode="auto" class="view-mode-btn px-3 py-1.5 rounded-lg text-xs font-bold transition bg-emerald-500 text-slate-950 shadow">
+                            Otomatis
+                        </button>
+                        <button type="button" data-view-mode="side" class="view-mode-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white">
+                            Samping
+                        </button>
+                        <button type="button" data-view-mode="front" class="view-mode-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white">
+                            Depan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Control Bar -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
+                    <button id="btn-toggle-cam" disabled class="col-span-2 sm:col-span-2 py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-emerald-500/10">
+                        <i data-lucide="video" id="cam-btn-icon" class="w-5 h-5"></i>
+                        <span id="cam-btn-text">Mulai Kamera</span>
+                    </button>
+
+                    <button id="btn-pause" disabled class="col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 disabled:bg-slate-800/60 disabled:border-slate-800 disabled:text-slate-600 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                        <i data-lucide="pause" id="pause-btn-icon" class="w-4 h-4"></i>
+                        <span id="pause-btn-text">Jeda</span>
+                    </button>
+
+                    <button id="btn-switch-cam" class="py-3.5 px-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-400"></i>
+                        <span>Kamera</span>
+                    </button>
+
+                    <button id="btn-reset" class="py-3.5 px-3 rounded-2xl bg-slate-800 hover:bg-rose-950/60 hover:border-rose-800 hover:text-rose-300 text-slate-200 border border-slate-700 font-semibold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-400"></i>
+                        <span>Reset</span>
+                    </button>
+                </div>
+
+                <!-- Quick Setup Guide Card -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex items-start gap-3.5">
+                    <div class="p-2 rounded-xl bg-sky-500/10 text-sky-400 shrink-0 mt-0.5">
+                        <i data-lucide="lightbulb" class="w-5 h-5"></i>
+                    </div>
+                    <div class="text-xs text-slate-300 space-y-1 leading-relaxed">
+                        <p class="font-semibold text-white">Panduan Sensor Samping &amp; Depan:</p>
+                        <ul class="list-disc list-inside text-slate-400 space-y-0.5">
+                            <li><strong>Mode Samping:</strong> Mengukur sudut siku (<strong>&lt; 90°</strong> turun, <strong>&gt; 150°</strong> naik) dan kelurusan badan (bahu–pinggul–kaki).</li>
+                            <li><strong>Mode Depan:</strong> Letakkan ponsel/laptop di depan wajah Anda. Sensor melacak <strong>sudut kedua siku (kiri &amp; kanan)</strong> serta penurunan jarak bahu terhadap pergelangan tangan.</li>
+                            <li><strong>Mode Otomatis:</strong> Mendeteksi otomatis apakah tubuh Anda menghadap ke depan atau menyamping terhadap kamera.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Fitness Stats Dashboard (5 cols on desktop) -->
+            <div class="lg:col-span-5 flex flex-col gap-4">
+                
+                <!-- Main Rep Counter & Stage Card -->
+                <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800/90 border border-slate-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                    <!-- Subtle decorative glow -->
+                    <div class="absolute -top-16 -right-16 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Total Push-Up</span>
+                        <!-- Stage Badge -->
+                        <span id="stage-badge" class="px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 transition-colors">
+                            SIAP
+                        </span>
+                    </div>
+
+                    <div class="flex items-baseline gap-3 my-2">
+                        <span id="rep-count" class="text-7xl sm:text-8xl font-black tracking-tighter text-white tabular-nums">0</span>
+                        <span class="text-lg font-semibold text-slate-400">/ <span id="target-display">20</span> rep</span>
+                    </div>
+
+                    <!-- Target Progress Bar -->
+                    <div class="mt-4 space-y-2">
+                        <div class="flex justify-between text-xs font-medium">
+                            <span class="text-slate-400">Progres Target Latihan</span>
+                            <span id="progress-percent" class="text-emerald-400 font-bold">0%</span>
+                        </div>
+                        <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                            <div id="progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Target Selector -->
+                    <div class="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-3">
+                        <label for="target-input" class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="target" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Target Repetisi:</span>
+                        </label>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="adjustTarget(-5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center transition">-5</button>
+                            <input type="number" id="target-input" value="20" min="1" max="500" class="w-16 h-8 bg-slate-950 border border-slate-700 rounded-lg text-center text-sm font-bold text-white focus:outline-none focus:border-emerald-500">
+                            <button onclick="adjustTarget(5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center transition">+5</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Elbow Angle Gauge Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                                <i data-lucide="gauge" class="w-4 h-4"></i>
+                            </div>
+                            <span id="gauge-title" class="text-xs font-bold uppercase tracking-wider text-slate-300">Sudut Tekukan Siku</span>
+                        </div>
+                        <span id="elbow-angle-val" class="text-2xl font-black font-mono text-amber-400">--°</span>
+                    </div>
+
+                    <!-- Visual Angle Bar -->
+                    <div class="relative w-full h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-800 mb-2">
+                        <!-- Threshold markers -->
+                        <div id="marker-down" class="absolute top-0 bottom-0 left-[50%] w-0.5 bg-emerald-500/50 z-10" title="Batas Bawah (90°)"></div>
+                        <div id="marker-up" class="absolute top-0 bottom-0 left-[83%] w-0.5 bg-sky-500/50 z-10" title="Batas Atas (150°)"></div>
+                        <!-- Dynamic Bar -->
+                        <div id="angle-bar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-500 transition-all duration-100 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div id="gauge-labels" class="flex justify-between text-[10px] font-semibold text-slate-500">
+                        <span>0° (Penuh)</span>
+                        <span class="text-emerald-400">90° (Turun)</span>
+                        <span class="text-sky-400">150°+ (Naik)</span>
+                    </div>
+                </div>
+
+                <!-- Workout Metrics Grid (Timer & Calories) -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Workout Timer -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg flex flex-col justify-between">
+                        <div class="flex items-center gap-2 text-slate-400 mb-2">
+                            <i data-lucide="timer" class="w-4 h-4 text-sky-400"></i>
+                            <span class="text-xs font-bold uppercase tracking-wider">Durasi Latihan</span>
+                        </div>
+                        <div>
+                            <p id="timer-display" class="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">00:00</p>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Menit : Detik</p>
+                        </div>
+                    </div>
+
+                    <!-- Estimated Calories -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg flex flex-col justify-between">
+                        <div class="flex items-center gap-2 text-slate-400 mb-2">
+                            <i data-lucide="flame" class="w-4 h-4 text-orange-400"></i>
+                            <span class="text-xs font-bold uppercase tracking-wider">Estimasi Kalori</span>
+                        </div>
+                        <div>
+                            <p class="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">
+                                <span id="calories-display">0.0</span> <span class="text-sm font-bold text-orange-400">kkal</span>
+                            </p>
+                            <p class="text-[11px] text-slate-500 mt-0.5">~0.45 kkal / rep</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            Ditenagai oleh <span class="text-slate-300 font-semibold">MediaPipe Pose Landmarker</span> &bull; Pemrosesan AI 100% Lokal di Perangkat Anda (Privasi Terjaga).
+        </div>
+    </footer>
+
+    <!-- MediaPipe Tasks Vision & Application Logic -->
+    <script type="module">
+        import {
+            PoseLandmarker,
+            FilesetResolver
+        } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // ==========================================
+        // 1. STATE & CONFIGURATION
+        // ==========================================
+        let poseLandmarker = null;
+        let isModelLoaded = false;
+        let isCameraRunning = false;
+        let isPaused = false;
+        let facingMode = "user"; // 'user' (depan) or 'environment' (belakang)
+        let cameraViewMode = "auto"; // 'auto' | 'side' | 'front'
+        let animationFrameId = null;
+        let lastVideoTime = -1;
+
+        // Workout & Rep State
+        let repCount = 0;
+        let targetReps = 20;
+        let pushupStage = "SIAP"; // 'SIAP', 'NAIK', 'TURUN'
+        let targetReachedNotified = false;
+        let soundEnabled = true;
+
+        // Angle & Front-depth smoothing buffer
+        const angleHistory = [];
+        const depthHistory = [];
+        const SMOOTHING_WINDOW = 4;
+
+        // Timer State
+        let timerInterval = null;
+        let elapsedSeconds = 0;
+
+        // ==========================================
+        // 2. DOM ELEMENTS
+        // ==========================================
+        const video = document.getElementById("webcam");
+        const canvas = document.getElementById("output_canvas");
+        const ctx = canvas.getContext("2d");
+
+        const aiStatusBadge = document.getElementById("ai-status-badge");
+        const aiStatusText = document.getElementById("ai-status-text");
+
+        const cameraPlaceholder = document.getElementById("camera-placeholder");
+        const canvasHudTop = document.getElementById("canvas-hud-top");
+        const formFeedbackOverlay = document.getElementById("form-feedback-overlay");
+
+        const btnStartOverlay = document.getElementById("btn-start-overlay");
+        const btnToggleCam = document.getElementById("btn-toggle-cam");
+        const camBtnText = document.getElementById("cam-btn-text");
+        const btnPause = document.getElementById("btn-pause");
+        const pauseBtnText = document.getElementById("pause-btn-text");
+        const btnSwitchCam = document.getElementById("btn-switch-cam");
+        const btnReset = document.getElementById("btn-reset");
+        const btnSound = document.getElementById("btn-sound");
+
+        const pauseOverlay = document.getElementById("pause-overlay");
+        const liveStatusText = document.getElementById("live-status-text");
+        const liveDotPing = document.getElementById("live-dot-ping");
+        const liveDotCore = document.getElementById("live-dot-core");
+
+        const repCountEl = document.getElementById("rep-count");
+        const stageBadgeEl = document.getElementById("stage-badge");
+        const targetDisplayEl = document.getElementById("target-display");
+        const targetInputEl = document.getElementById("target-input");
+        const progressPercentEl = document.getElementById("progress-percent");
+        const progressBarEl = document.getElementById("progress-bar");
+
+        const elbowAngleValEl = document.getElementById("elbow-angle-val");
+        const angleBarEl = document.getElementById("angle-bar");
+        const detectedSideEl = document.getElementById("detected-side");
+        const gaugeTitleEl = document.getElementById("gauge-title");
+        const gaugeLabelsEl = document.getElementById("gauge-labels");
+        const markerDownEl = document.getElementById("marker-down");
+        const markerUpEl = document.getElementById("marker-up");
+        const secondaryMetricLabelEl = document.getElementById("secondary-metric-label");
+
+        const formBannerBox = document.getElementById("form-banner-box");
+        const formIconBg = document.getElementById("form-icon-bg");
+        const formFeedbackText = document.getElementById("form-feedback-text");
+        const bodyAngleText = document.getElementById("body-angle-text");
+        const viewModeBtns = document.querySelectorAll(".view-mode-btn");
+
+        const timerDisplayEl = document.getElementById("timer-display");
+        const caloriesDisplayEl = document.getElementById("calories-display");
+
+        // ==========================================
+        // 3. WEB AUDIO API (SYNTHESIZED BEEP)
+        // ==========================================
+        let audioCtx = null;
+
+        function playTone(freq = 880, duration = 0.12, type = "sine", delay = 0) {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === "suspended") {
+                    audioCtx.resume();
+                }
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+
+                gain.gain.setValueAtTime(0.18, audioCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(audioCtx.currentTime + delay);
+                osc.stop(audioCtx.currentTime + delay + duration);
+            } catch (e) {
+                // Ignore audio context errors on restricted browsers
+            }
+        }
+
+        function playRepSuccess() {
+            playTone(660, 0.09, "sine", 0);
+            playTone(990, 0.14, "sine", 0.08);
+        }
+
+        function playTargetCompleted() {
+            // Victory fanfare chord sequence
+            playTone(523.25, 0.12, "triangle", 0);    // C5
+            playTone(659.25, 0.12, "triangle", 0.12); // E5
+            playTone(783.99, 0.12, "triangle", 0.24); // G5
+            playTone(1046.50, 0.35, "triangle", 0.36);// C6
+        }
+
+        function playPauseCue(paused) {
+            if (paused) {
+                playTone(440, 0.09, "sine", 0);
+                playTone(330, 0.12, "sine", 0.08);
+            } else {
+                playTone(330, 0.09, "sine", 0);
+                playTone(523.25, 0.12, "sine", 0.08);
+            }
+        }
+
+        // ==========================================
+        // 4. TOAST NOTIFICATION SYSTEM
+        // ==========================================
+        window.showToast = function (message, type = "info") {
+            const banner = document.getElementById("toast-banner");
+            const msgEl = document.getElementById("toast-message");
+
+            banner.className = "mb-4 p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all duration-300";
+
+            if (type === "error") {
+                banner.classList.add("bg-rose-950/80", "border-rose-800", "text-rose-200");
+            } else if (type === "success") {
+                banner.classList.add("bg-emerald-950/80", "border-emerald-700", "text-emerald-200");
+            } else {
+                banner.classList.add("bg-sky-950/80", "border-sky-800", "text-sky-200");
+            }
+
+            msgEl.textContent = message;
+            banner.classList.remove("hidden");
+        };
+
+        window.hideToast = function () {
+            document.getElementById("toast-banner").classList.add("hidden");
+        };
+
+        // ==========================================
+        // 5. INITIALIZE MEDIAPIPE POSE LANDMARKER
+        // ==========================================
+        async function initializePoseLandmarker() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+                );
+                poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath:
+                            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.55,
+                    minPosePresenceConfidence: 0.55,
+                    minTrackingConfidence: 0.55
+                });
+
+                isModelLoaded = true;
+                aiStatusBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium";
+                aiStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span><span>AI Siap</span>`;
+
+                btnStartOverlay.disabled = false;
+                btnToggleCam.disabled = false;
+            } catch (error) {
+                console.error("Failed to load MediaPipe:", error);
+                aiStatusBadge.className = "flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-medium";
+                aiStatusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span>Gagal Memuat AI</span>`;
+                showToast("Gagal memuat model deteksi AI. Periksa koneksi internet Anda lalu muat ulang halaman.", "error");
+            }
+        }
+
+        // ==========================================
+        // 6. GEOMETRY & ANGLE CALCULATIONS
+        // ==========================================
+        function calculateAngle(a, b, c) {
+            const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
+            let angle = Math.abs((radians * 180.0) / Math.PI);
+            if (angle > 180.0) {
+                angle = 360.0 - angle;
+            }
+            return angle;
+        }
+
+        function getSmoothedAngle(rawAngle) {
+            angleHistory.push(rawAngle);
+            if (angleHistory.length > SMOOTHING_WINDOW) {
+                angleHistory.shift();
+            }
+            const sum = angleHistory.reduce((acc, val) => acc + val, 0);
+            return sum / angleHistory.length;
+        }
+
+        function getSmoothedDepth(rawDepth) {
+            depthHistory.push(rawDepth);
+            if (depthHistory.length > SMOOTHING_WINDOW) {
+                depthHistory.shift();
+            }
+            const sum = depthHistory.reduce((acc, val) => acc + val, 0);
+            return sum / depthHistory.length;
+        }
+
+        function calculateDistance2D(p1, p2) {
+            return Math.hypot(p1.x - p2.x, p1.y - p2.y);
+        }
+
+        // ==========================================
+        // 7. CAMERA CONTROL & WORKOUT TIMER
+        // ==========================================
+        function startWorkoutTimer() {
+            if (timerInterval) return;
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, "0");
+                const secs = String(elapsedSeconds % 60).padStart(2, "0");
+                timerDisplayEl.textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopWorkoutTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        async function startCamera() {
+            if (!isModelLoaded) return;
+
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                await video.play();
+
+                // Match canvas resolution to actual video stream resolution
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                isCameraRunning = true;
+                setPausedState(false, true);
+                updateCameraUI(true);
+                startWorkoutTimer();
+                hideToast();
+
+                // Start real-time detection loop
+                lastVideoTime = -1;
+                predictWebcam();
+
+            } catch (err) {
+                console.error("Camera error:", err);
+                showToast("Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan pada browser Anda.", "error");
+            }
+        }
+
+        function stopCamera() {
+            isCameraRunning = false;
+            setPausedState(false, true);
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            stopWorkoutTimer();
+            updateCameraUI(false);
+        }
+
+        function setPausedState(paused, silent = false) {
+            isPaused = paused;
+
+            if (!isCameraRunning) {
+                btnPause.disabled = true;
+                pauseOverlay.classList.add("hidden");
+                pauseBtnText.textContent = "Jeda";
+                btnPause.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i><span>Jeda</span>`;
+                btnPause.className = "col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 disabled:bg-slate-800/60 disabled:border-slate-800 disabled:text-slate-600 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95";
+                lucide.createIcons();
+                return;
+            }
+
+            btnPause.disabled = false;
+
+            if (isPaused) {
+                // Pause workout timer & display overlay
+                stopWorkoutTimer();
+                pauseOverlay.classList.remove("hidden");
+                formFeedbackOverlay.classList.add("hidden");
+
+                // Update HUD pill to Paused
+                liveStatusText.textContent = "DIJEDA";
+                liveDotPing.classList.add("hidden");
+                liveDotCore.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400";
+
+                // Update Stage Badge
+                updateStageBadge("DIJEDA", "bg-amber-500/20 text-amber-400 border-amber-500/50");
+
+                // Update Pause Button to Resume
+                btnPause.className = "col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-sky-500 hover:bg-sky-600 text-slate-950 border border-sky-400 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-sky-500/20";
+                btnPause.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-current"></i><span>Lanjutkan</span>`;
+            } else {
+                // Resume workout timer & hide pause overlay
+                startWorkoutTimer();
+                pauseOverlay.classList.add("hidden");
+                formFeedbackOverlay.classList.remove("hidden");
+
+                // Clear smoothing history so post-pause movement starts fresh
+                angleHistory.length = 0;
+                depthHistory.length = 0;
+
+                // Update HUD pill back to Active
+                liveStatusText.textContent = "AI Aktif";
+                liveDotPing.classList.remove("hidden");
+                liveDotCore.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500";
+
+                // Restore Stage Badge
+                if (pushupStage === "TURUN") {
+                    updateStageBadge("TURUN", "bg-amber-500/20 text-amber-400 border-amber-500/40");
+                } else if (pushupStage === "NAIK") {
+                    updateStageBadge("NAIK", "bg-sky-500/20 text-sky-400 border-sky-500/40");
+                } else {
+                    updateStageBadge("SIAP", "bg-slate-800 text-slate-300 border-slate-700");
+                }
+
+                // Update Button back to Pause
+                btnPause.className = "col-span-2 sm:col-span-1 py-3.5 px-3 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/40 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95";
+                btnPause.innerHTML = `<i data-lucide="pause" class="w-4 h-4"></i><span>Jeda</span>`;
+            }
+
+            lucide.createIcons();
+            if (!silent) {
+                playPauseCue(isPaused);
+            }
+        }
+
+        function togglePause() {
+            if (!isCameraRunning) return;
+            setPausedState(!isPaused);
+        }
+
+        function updateCameraUI(running) {
+            if (running) {
+                cameraPlaceholder.classList.add("hidden");
+                canvasHudTop.classList.remove("hidden");
+                if (!isPaused) {
+                    formFeedbackOverlay.classList.remove("hidden");
+                }
+                btnPause.disabled = false;
+
+                btnToggleCam.className = "col-span-2 sm:col-span-2 py-3.5 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-rose-500/20";
+                camBtnText.textContent = "Hentikan Kamera";
+            } else {
+                cameraPlaceholder.classList.remove("hidden");
+                canvasHudTop.classList.add("hidden");
+                formFeedbackOverlay.classList.add("hidden");
+                pauseOverlay.classList.add("hidden");
+                btnPause.disabled = true;
+
+                btnToggleCam.className = "col-span-2 sm:col-span-2 py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95 shadow-lg shadow-emerald-500/10";
+                camBtnText.textContent = "Mulai Kamera";
+            }
+        }
+
+        // ==========================================
+        // 8. POSE DETECTION & PUSH-UP LOGIC LOOP
+        // ==========================================
+        function predictWebcam() {
+            if (!isCameraRunning) return;
+
+            const startTimeMs = performance.now();
+            if (lastVideoTime !== video.currentTime) {
+                lastVideoTime = video.currentTime;
+                if (isPaused) {
+                    drawPausedVideoFrame();
+                } else {
+                    const results = poseLandmarker.detectForVideo(video, startTimeMs);
+                    processAndDrawFrame(results);
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(predictWebcam);
+        }
+
+        function drawPausedVideoFrame() {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.save();
+            ctx.clearRect(0, 0, w, h);
+
+            if (facingMode === "user") {
+                ctx.translate(w, 0);
+                ctx.scale(-1, 1);
+            }
+
+            // Keep live camera feed visible while paused so user can adjust position
+            ctx.drawImage(video, 0, 0, w, h);
+            ctx.restore();
+        }
+
+        function processAndDrawFrame(results) {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.save();
+            ctx.clearRect(0, 0, w, h);
+
+            // Mirror horizontally if using front-facing camera
+            if (facingMode === "user") {
+                ctx.translate(w, 0);
+                ctx.scale(-1, 1);
+            }
+
+            ctx.drawImage(video, 0, 0, w, h);
+
+            if (results.landmarks && results.landmarks.length > 0) {
+                const landmarks = results.landmarks[0];
+
+                const leftShoulder = landmarks[11];
+                const rightShoulder = landmarks[12];
+                const leftElbow = landmarks[13];
+                const rightElbow = landmarks[14];
+                const leftWrist = landmarks[15];
+                const rightWrist = landmarks[16];
+                const leftHip = landmarks[23];
+                const rightHip = landmarks[24];
+                const leftAnkle = landmarks[27];
+                const rightAnkle = landmarks[28];
+
+                // Determine active orientation ('front' vs 'side')
+                let activeOrientation = cameraViewMode;
+                if (cameraViewMode === "auto") {
+                    const bothArmsVisible =
+                        (leftShoulder.visibility || 0) > 0.5 &&
+                        (rightShoulder.visibility || 0) > 0.5 &&
+                        (leftElbow.visibility || 0) > 0.45 &&
+                        (rightElbow.visibility || 0) > 0.45;
+                    const shoulderSpreadX = Math.abs(leftShoulder.x - rightShoulder.x);
+                    const torsoHeightY = Math.abs(
+                        ((leftShoulder.y + rightShoulder.y) / 2) - ((leftHip.y + rightHip.y) / 2)
+                    );
+                    // In front-facing pushups, shoulders span horizontally significantly relative to torso height
+                    if (bothArmsVisible && shoulderSpreadX > Math.max(0.14, torsoHeightY * 0.75)) {
+                        activeOrientation = "front";
+                    } else {
+                        activeOrientation = "side";
+                    }
+                }
+
+                if (activeOrientation === "front") {
+                    processFrontView(
+                        landmarks,
+                        leftShoulder, rightShoulder,
+                        leftElbow, rightElbow,
+                        leftWrist, rightWrist,
+                        leftHip, rightHip,
+                        w, h
+                    );
+                } else {
+                    processSideView(
+                        landmarks,
+                        leftShoulder, rightShoulder,
+                        leftElbow, rightElbow,
+                        leftWrist, rightWrist,
+                        leftHip, rightHip,
+                        leftAnkle, rightAnkle,
+                        w, h
+                    );
+                }
+            } else {
+                detectedSideEl.textContent = "-";
+                elbowAngleValEl.textContent = "--°";
+                bodyAngleText.textContent = "--°";
+                updateFormFeedback("Tubuh Tidak Terdeteksi — Mundur Sedikit", false);
+            }
+
+            ctx.restore();
+        }
+
+        // ==========================================
+        // 8A. SIDE-VIEW SENSOR PROCESSING
+        // ==========================================
+        function processSideView(
+            landmarks,
+            leftShoulder, rightShoulder,
+            leftElbow, rightElbow,
+            leftWrist, rightWrist,
+            leftHip, rightHip,
+            leftAnkle, rightAnkle,
+            w, h
+        ) {
+            updateGaugeModeUI("side");
+
+            const leftVis = (leftShoulder.visibility || 0) + (leftElbow.visibility || 0) + (leftWrist.visibility || 0);
+            const rightVis = (rightShoulder.visibility || 0) + (rightElbow.visibility || 0) + (rightWrist.visibility || 0);
+
+            const useLeft = leftVis >= rightVis;
+            detectedSideEl.textContent = `Samping (${useLeft ? "Kiri" : "Kanan"})`;
+
+            const shoulder = useLeft ? leftShoulder : rightShoulder;
+            const elbow = useLeft ? leftElbow : rightElbow;
+            const wrist = useLeft ? leftWrist : rightWrist;
+            const hip = useLeft ? leftHip : rightHip;
+            const ankle = useLeft ? leftAnkle : rightAnkle;
+
+            if ((shoulder.visibility || 0) > 0.45 && (elbow.visibility || 0) > 0.45 && (wrist.visibility || 0) > 0.45) {
+                const rawElbowAngle = calculateAngle(shoulder, elbow, wrist);
+                const elbowAngle = Math.round(getSmoothedAngle(rawElbowAngle));
+
+                elbowAngleValEl.textContent = `${elbowAngle}°`;
+                const barPct = Math.min(100, Math.max(0, (elbowAngle / 180) * 100));
+                angleBarEl.style.width = `${barPct}%`;
+
+                // Push-Up State Machine (Side View)
+                if (elbowAngle > 150) {
+                    if (pushupStage === "TURUN") {
+                        registerValidRep();
+                    }
+                    pushupStage = "NAIK";
+                    updateStageBadge("NAIK", "bg-sky-500/20 text-sky-400 border-sky-500/40");
+                } else if (elbowAngle < 90 && (pushupStage === "NAIK" || pushupStage === "SIAP")) {
+                    pushupStage = "TURUN";
+                    updateStageBadge("TURUN", "bg-amber-500/20 text-amber-400 border-amber-500/40");
+                }
+
+                // Body Alignment Check (Shoulder - Hip - Ankle)
+                let isGoodForm = true;
+                if ((hip.visibility || 0) > 0.4 && (ankle.visibility || 0) > 0.4) {
+                    const bodyAngle = Math.round(calculateAngle(shoulder, hip, ankle));
+                    bodyAngleText.textContent = `${bodyAngle}°`;
+
+                    if (bodyAngle < 150) {
+                        isGoodForm = false;
+                        if (hip.y < shoulder.y) {
+                            updateFormFeedback("Pinggul Terlalu Tinggi! Luruskan Badan", false);
+                        } else {
+                            updateFormFeedback("Pinggul Terlalu Turun! Kencangkan Perut", false);
+                        }
+                    } else {
+                        updateFormFeedback(
+                            pushupStage === "TURUN" ? "Bagus! Dorong Tubuh ke Atas" : "Postur Samping Lurus & Ideal",
+                            true
+                        );
+                    }
+                } else {
+                    bodyAngleText.textContent = "--°";
+                    updateFormFeedback("Pastikan Kaki & Pinggul Terlihat Kamera", true);
+                }
+
+                // Draw Side Skeleton
+                const lineColor = isGoodForm ? "#10b981" : "#f43f5e";
+                drawBone(shoulder, elbow, lineColor, 6);
+                drawBone(elbow, wrist, lineColor, 6);
+
+                if ((hip.visibility || 0) > 0.4) {
+                    drawBone(shoulder, hip, lineColor, 5);
+                    if ((ankle.visibility || 0) > 0.4) {
+                        drawBone(hip, ankle, lineColor, 5);
+                        drawJoint(ankle, "#38bdf8", 7);
+                    }
+                    drawJoint(hip, "#38bdf8", 8);
+                }
+
+                drawJoint(shoulder, "#ffffff", 9);
+                drawJoint(elbow, pushupStage === "TURUN" ? "#fbbf24" : "#10b981", 11);
+                drawJoint(wrist, "#ffffff", 8);
+
+                drawUnmirroredCanvasLabel(elbow.x * w, elbow.y * h - 18, `${elbowAngle}°`);
+            } else {
+                updateFormFeedback("Posisikan Tubuh Menyamping di Depan Kamera", false);
+            }
+        }
+
+        // ==========================================
+        // 8B. FRONT-VIEW SENSOR PROCESSING
+        // ==========================================
+        function processFrontView(
+            landmarks,
+            leftShoulder, rightShoulder,
+            leftElbow, rightElbow,
+            leftWrist, rightWrist,
+            leftHip, rightHip,
+            w, h
+        ) {
+            updateGaugeModeUI("front");
+            detectedSideEl.textContent = "Depan (2 Lengan)";
+
+            const armsVisible =
+                (leftShoulder.visibility || 0) > 0.45 &&
+                (rightShoulder.visibility || 0) > 0.45 &&
+                (leftElbow.visibility || 0) > 0.45 &&
+                (rightElbow.visibility || 0) > 0.45 &&
+                (leftWrist.visibility || 0) > 0.4 &&
+                (rightWrist.visibility || 0) > 0.4;
+
+            if (armsVisible) {
+                // 1. Bilateral Elbow Angles (Left & Right)
+                const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
+                const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+                const avgElbowAngle = Math.round(getSmoothedAngle((leftAngle + rightAngle) / 2));
+
+                // 2. Shoulder-to-Wrist Vertical Drop Ratio normalized by Shoulder Width
+                const shoulderWidth = Math.max(0.05, calculateDistance2D(leftShoulder, rightShoulder));
+                const midShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+                const midWristY = (leftWrist.y + rightWrist.y) / 2;
+                // When arms are extended (UP), midWristY - midShoulderY is large (~0.75 - 1.1x shoulderWidth).
+                // When chest lowers near floor (DOWN), midShoulderY approaches midWristY (< 0.42x shoulderWidth).
+                const rawDepthRatio = Math.max(0, (midWristY - midShoulderY) / shoulderWidth);
+                const depthRatio = getSmoothedDepth(rawDepthRatio);
+                const depthPct = Math.min(100, Math.round(depthRatio * 100));
+
+                // Update Primary Gauge with Bilateral Elbow Angle
+                elbowAngleValEl.textContent = `${avgElbowAngle}°`;
+                const barPct = Math.min(100, Math.max(0, (avgElbowAngle / 180) * 100));
+                angleBarEl.style.width = `${barPct}%`;
+
+                // 3. Symmetry Check (Left vs Right Elbow & Shoulder tilt)
+                const elbowDiff = Math.abs(leftAngle - rightAngle);
+                const shoulderTilt = Math.abs(leftShoulder.y - rightShoulder.y) / shoulderWidth;
+                const isSymmetrical = elbowDiff <= 24 && shoulderTilt <= 0.22;
+
+                // 4. Push-Up State Machine (Front View combines Elbow Angle + Shoulder Drop)
+                const isAtTop = avgElbowAngle > 145 && depthRatio > 0.52;
+                const isAtBottom = avgElbowAngle < 102 || depthRatio < 0.42;
+
+                if (isAtTop) {
+                    if (pushupStage === "TURUN") {
+                        registerValidRep();
+                    }
+                    pushupStage = "NAIK";
+                    updateStageBadge("NAIK", "bg-sky-500/20 text-sky-400 border-sky-500/40");
+                } else if (isAtBottom && (pushupStage === "NAIK" || pushupStage === "SIAP")) {
+                    pushupStage = "TURUN";
+                    updateStageBadge("TURUN", "bg-amber-500/20 text-amber-400 border-amber-500/40");
+                }
+
+                // 5. Front Form Evaluation (Symmetry & Hip Sag Check)
+                const midHipY = (leftHip.y + rightHip.y) / 2;
+                const hipsVisible = (leftHip.visibility || 0) > 0.4 && (rightHip.visibility || 0) > 0.4;
+
+                bodyAngleText.textContent = `${depthPct}%`;
+
+                if (!isSymmetrical) {
+                    updateFormFeedback("Dorong Seimbang! Lengan Kiri & Kanan Tidak Rata", false);
+                } else if (hipsVisible && midHipY > midWristY + 0.04) {
+                    updateFormFeedback("Pinggul Terlalu Turun! Kencangkan Core", false);
+                } else {
+                    updateFormFeedback(
+                        pushupStage === "TURUN" ? "Dada Rendah! Dorong Naik Seimbang" : "Postur Depan Simetris & Stabil",
+                        true
+                    );
+                }
+
+                // 6. Draw Bilateral Front Skeleton
+                const lineColor = isSymmetrical ? "#10b981" : "#f43f5e";
+                // Shoulder bridge
+                drawBone(leftShoulder, rightShoulder, "#38bdf8", 5);
+                // Left arm
+                drawBone(leftShoulder, leftElbow, lineColor, 6);
+                drawBone(leftElbow, leftWrist, lineColor, 6);
+                // Right arm
+                drawBone(rightShoulder, rightElbow, lineColor, 6);
+                drawBone(rightElbow, rightWrist, lineColor, 6);
+
+                if (hipsVisible) {
+                    drawBone(leftShoulder, leftHip, "rgba(56, 189, 248, 0.55)", 4);
+                    drawBone(rightShoulder, rightHip, "rgba(56, 189, 248, 0.55)", 4);
+                    drawBone(leftHip, rightHip, "rgba(56, 189, 248, 0.55)", 4);
+                    drawJoint(leftHip, "#38bdf8", 6);
+                    drawJoint(rightHip, "#38bdf8", 6);
+                }
+
+                const elbowColor = pushupStage === "TURUN" ? "#fbbf24" : "#10b981";
+                drawJoint(leftShoulder, "#ffffff", 9);
+                drawJoint(rightShoulder, "#ffffff", 9);
+                drawJoint(leftElbow, elbowColor, 10);
+                drawJoint(rightElbow, elbowColor, 10);
+                drawJoint(leftWrist, "#ffffff", 8);
+                drawJoint(rightWrist, "#ffffff", 8);
+
+                // Draw Left & Right Elbow Angle Labels
+                drawUnmirroredCanvasLabel(leftElbow.x * w, leftElbow.y * h - 16, `${Math.round(leftAngle)}°`);
+                drawUnmirroredCanvasLabel(rightElbow.x * w, rightElbow.y * h - 16, `${Math.round(rightAngle)}°`);
+            } else {
+                bodyAngleText.textContent = "--%";
+                updateFormFeedback("Hadapkan Bahu & Kedua Lengan Penuh ke Kamera", false);
+            }
+        }
+
+        function registerValidRep() {
+            repCount++;
+            updateRepDisplay();
+            playRepSuccess();
+
+            if (repCount >= targetReps && !targetReachedNotified) {
+                targetReachedNotified = true;
+                playTargetCompleted();
+                showToast(`Luar biasa! Target ${targetReps} push-up telah tercapai!`, "success");
+            }
+        }
+
+        function drawUnmirroredCanvasLabel(x, y, text) {
+            ctx.save();
+            if (facingMode === "user") {
+                ctx.translate(x, y);
+                ctx.scale(-1, 1);
+                drawAngleLabel(0, 0, text);
+            } else {
+                drawAngleLabel(x, y, text);
+            }
+            ctx.restore();
+        }
+
+        function updateGaugeModeUI(mode) {
+            if (mode === "front") {
+                gaugeTitleEl.textContent = "Rata-rata Sudut 2 Siku";
+                secondaryMetricLabelEl.textContent = "Tinggi Dada";
+                markerDownEl.style.left = "56%";
+                markerUpEl.style.left = "80%";
+                gaugeLabelsEl.innerHTML = `
+                    <span>0° (Penuh)</span>
+                    <span class="text-emerald-400">100° (Turun)</span>
+                    <span class="text-sky-400">145°+ (Naik)</span>
+                `;
+            } else {
+                gaugeTitleEl.textContent = "Sudut Tekukan Siku";
+                secondaryMetricLabelEl.textContent = "Kelurusan Badan";
+                markerDownEl.style.left = "50%";
+                markerUpEl.style.left = "83%";
+                gaugeLabelsEl.innerHTML = `
+                    <span>0° (Penuh)</span>
+                    <span class="text-emerald-400">90° (Turun)</span>
+                    <span class="text-sky-400">150°+ (Naik)</span>
+                `;
+            }
+        }
+
+        function drawBone(p1, p2, color, width) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
+            ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = "round";
+            ctx.stroke();
+        }
+
+        function drawJoint(p, fillColor, radius) {
+            const x = p.x * canvas.width;
+            const y = p.y * canvas.height;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2 * Math.PI);
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#090d16";
+            ctx.stroke();
+        }
+
+        function drawAngleLabel(x, y, text) {
+            ctx.font = "bold 18px Inter, sans-serif";
+            const metrics = ctx.measureText(text);
+            const padX = 10;
+            const boxW = metrics.width + padX * 2;
+            const boxH = 28;
+
+            ctx.fillStyle = "rgba(9, 13, 22, 0.85)";
+            ctx.beginPath();
+            ctx.roundRect(x - boxW / 2, y - boxH + 6, boxW, boxH, 8);
+            ctx.fill();
+
+            ctx.fillStyle = "#fbbf24";
+            ctx.textAlign = "center";
+            ctx.fillText(text, x, y);
+        }
+
+        // ==========================================
+        // 9. UI UPDATERS & EVENT HANDLERS
+        // ==========================================
+        function updateRepDisplay() {
+            repCountEl.textContent = repCount;
+
+            // Update Calories (~0.45 kcal per pushup)
+            const kcal = (repCount * 0.45).toFixed(1);
+            caloriesDisplayEl.textContent = kcal;
+
+            // Update Progress Bar
+            const pct = Math.min(100, Math.round((repCount / targetReps) * 100));
+            progressPercentEl.textContent = `${pct}%`;
+            progressBarEl.style.width = `${pct}%`;
+        }
+
+        function updateStageBadge(label, classes) {
+            stageBadgeEl.textContent = label;
+            stageBadgeEl.className = `px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider border transition-colors ${classes}`;
+        }
+
+        function updateFormFeedback(text, isGood) {
+            formFeedbackText.textContent = text;
+            if (isGood) {
+                formBannerBox.className = "bg-slate-900/90 backdrop-blur-md border border-emerald-500/40 px-4 py-3 rounded-2xl flex items-center justify-between shadow-lg transition-colors duration-200";
+                formIconBg.className = "p-2 rounded-xl bg-emerald-500/20 text-emerald-400";
+                bodyAngleText.className = "text-sm font-mono font-bold text-emerald-400";
+            } else {
+                formBannerBox.className = "bg-rose-950/90 backdrop-blur-md border border-rose-500/50 px-4 py-3 rounded-2xl flex items-center justify-between shadow-lg transition-colors duration-200";
+                formIconBg.className = "p-2 rounded-xl bg-rose-500/20 text-rose-400";
+                bodyAngleText.className = "text-sm font-mono font-bold text-rose-400";
+            }
+        }
+
+        window.adjustTarget = function (delta) {
+            let val = parseInt(targetInputEl.value, 10) || 20;
+            val = Math.min(500, Math.max(1, val + delta));
+            targetInputEl.value = val;
+            targetReps = val;
+            targetDisplayEl.textContent = targetReps;
+            targetReachedNotified = repCount >= targetReps;
+            updateRepDisplay();
+        };
+
+        targetInputEl.addEventListener("change", () => {
+            let val = parseInt(targetInputEl.value, 10);
+            if (isNaN(val) || val < 1) val = 1;
+            if (val > 500) val = 500;
+            targetInputEl.value = val;
+            targetReps = val;
+            targetDisplayEl.textContent = targetReps;
+            targetReachedNotified = repCount >= targetReps;
+            updateRepDisplay();
+        });
+
+        // Event Listeners
+        btnStartOverlay.addEventListener("click", startCamera);
+
+        viewModeBtns.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                cameraViewMode = btn.dataset.viewMode;
+                angleHistory.length = 0;
+                depthHistory.length = 0;
+
+                viewModeBtns.forEach((b) => {
+                    if (b === btn) {
+                        b.className = "view-mode-btn px-3 py-1.5 rounded-lg text-xs font-bold transition bg-emerald-500 text-slate-950 shadow";
+                    } else {
+                        b.className = "view-mode-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-white";
+                    }
+                });
+
+                const modeNames = {
+                    auto: "Otomatis (Depan & Samping)",
+                    side: "Tampak Samping",
+                    front: "Tampak Depan"
+                };
+                showToast(`Mode sensor kamera diatur ke: ${modeNames[cameraViewMode]}.`, "info");
+            });
+        });
+
+        btnToggleCam.addEventListener("click", () => {
+            if (isCameraRunning) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        });
+
+        btnPause.addEventListener("click", togglePause);
+
+        // Spacebar keyboard shortcut for quick Pause / Resume when camera is running
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "Space" && isCameraRunning) {
+                // Avoid triggering when typing inside number inputs
+                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+                if (activeTag === "input" || activeTag === "textarea") return;
+
+                e.preventDefault();
+                togglePause();
+            }
+        });
+
+        btnSwitchCam.addEventListener("click", () => {
+            facingMode = (facingMode === "user") ? "environment" : "user";
+            if (isCameraRunning) {
+                startCamera();
+            } else {
+                showToast(`Kamera diatur ke kamera ${facingMode === "user" ? "Depan" : "Belakang"}. Tekan Mulai Kamera.`, "info");
+            }
+        });
+
+        btnReset.addEventListener("click", () => {
+            repCount = 0;
+            pushupStage = "SIAP";
+            targetReachedNotified = false;
+            elapsedSeconds = 0;
+            angleHistory.length = 0;
+            depthHistory.length = 0;
+
+            timerDisplayEl.textContent = "00:00";
+            updateRepDisplay();
+            if (isPaused) {
+                updateStageBadge("DIJEDA", "bg-amber-500/20 text-amber-400 border-amber-500/50");
+            } else {
+                updateStageBadge("SIAP", "bg-slate-800 text-slate-300 border-slate-700");
+            }
+            showToast("Penghitung dan durasi latihan telah direset.", "info");
+        });
+
+        btnSound.addEventListener("click", () => {
+            soundEnabled = !soundEnabled;
+            document.getElementById("icon-sound-on").classList.toggle("hidden", !soundEnabled);
+            document.getElementById("icon-sound-off").classList.toggle("hidden", soundEnabled);
+            if (soundEnabled) playTone(660, 0.08);
+        });
+
+        // Boot up MediaPipe Pose Landmarker on page load
+        initializePoseLandmarker();
+    </script>
+</body>
+</html>
